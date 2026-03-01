@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "NeuroTrack",
+    "slug": "neurotrack",
+    "version": "1.0.0",
+    "scheme": "neurotrack",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "plugins": [
+      "expo-asset"
+    ]
+  }
+}

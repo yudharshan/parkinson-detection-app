@@ -1,0 +1,25 @@
+# 1. Dependency folders (Too big to upload)
+node_modules/
+jspm_packages/
+
+# 2. Private Secrets (Crucial! Hides your MongoDB password)
+.env
+.env.local
+.env.development.local
+
+# 3. Build folders (The compiled JavaScript)
+dist/
+build/
+out/
+
+# 4. Logs and Debugging
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+*.log
+
+# 5. OS/Editor Specific
+.DS_Store
+.vscode/
+.idea/

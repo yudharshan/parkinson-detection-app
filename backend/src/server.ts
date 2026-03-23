@@ -37,7 +37,26 @@ app.post('/api/analyze', async (req, res) => {
             else risk = "low";
         } else if (taskType === 'accelerometer') {
             // You can add tremor logic here later!
-            risk = "low"; 
+           const samples = payload.samples || [];
+           let peakValue = 0;
+           //const maxShake = Math.max(...samples.map(s => Math.abs(s.x)), ...samples.map(s => Math.abs(s.y)));
+           for (const s of samples) {
+             const absoluteX = Math.abs(s.x || 0);
+             const absoluteY = Math.abs(s.y || 0);
+             const currentMax = Math.max(absoluteX, absoluteY);
+
+             if (currentMax > peakValue) {
+                peakValue = currentMax;
+             }
+           }
+
+           if (peakValue > 8) {
+              risk = "high";      // Significant tremor detected
+            } else if (peakValue > 4) {
+              risk = "moderate";  // Slight instability
+            } else {
+               risk = "low";       // Stable movement
+           }
         }
 
         

@@ -1,32 +1,49 @@
-# NeuroTrack
+# 🧠 NeuroTrack: Full-Stack AI Parkinson's Detection
 
-React Native (Expo) frontend for a mobile health app that collects **accelerometer**, **reaction time**, and **tracing task** data for ML processing.
+This ecosystem captures **accelerometer**, **reaction time**, and **tracing task** data for real-time ML processing. It includes a React Native frontend, a Node.js gateway, and a FastAPI ML microservice.
 
-## Setup
+---
 
-1. **Install dependencies**
-   ```bash
-   npm install
-   ```
+## 🏗️ 1. ML Microservice (The "Brain")
+**Must be running for tremor analysis to work.**
 
-2. **Path alias**  
-   `@/` is configured in `tsconfig.json` and `babel.config.js` to point at `src/`. Install `babel-plugin-module-resolver` (in devDependencies) so imports like `import { X } from '@/models'` resolve.
+- `cd backend/ml-service`
+- `python -m venv venv`
+- **Activate:** `venv\Scripts\activate` (Windows) or `source venv/bin/activate` (Mac/Linux)
+- `pip install -r requirements.txt`
+- `uvicorn main:app --reload` (Runs on `http://127.0.0.1:8000`)
 
-3. **Run**
-   ```bash
-   npx expo start
-   ```
+---
 
-## Project structure
+## ⚡ 2. Node.js Backend (The "Gateway")
+**Handles Auth, Database persistence, and Clinical Logic.**
 
-See **[ARCHITECTURE.md](./ARCHITECTURE.md)** for the full folder layout, module roles, and data flow.
+- `cd backend`
+- `npm install`
+- **Create `.env`:** Add your `MONGO_URI`, `JWT_SECRET`, and `PORT=5000`.
+- `npm run dev` (Runs on `http://localhost:5000`)
 
-- **`app/`** – Expo Router screens (tabs, accelerometer, reaction, tracing, settings).
-- **`src/models/`** – TypeScript types for accelerometer, reaction, tracing, and session (ML-ready).
-- **`src/services/`** – API client (future ML), sensors, storage, export.
-- **`src/components/`** – Common, sensors, tasks (barrel exports ready).
-- **`src/hooks/`**, **`src/utils/`**, **`src/constants/`**, **`src/theme/`** – Hooks, helpers, config, design tokens.
+---
 
-## ML readiness
+## 📱 3. Frontend Setup (React Native / Expo)
+**The mobile interface.**
 
-All collected data uses types from `src/models/`. Local storage and export use the same shapes; when you add an ML backend, `src/services/api/` can send these payloads with minimal changes.
+- `cd frontend`
+- `npm install`
+- **⚠️ Network Config:** Update `baseURL` in `src/services/api/` to your **Laptop's Local IP** (e.g., `192.168.x.x:5000`). Physical phones cannot use `localhost`.
+- **Path Alias:** `@/` points to `src/`. Ensure `babel-plugin-module-resolver` is installed.
+- `npx expo start`
+
+---
+
+## 📂 Project Structure
+
+- **`frontend/app/`** – Expo Router screens (tabs, sensors, settings).
+- **`frontend/src/models/`** – TypeScript types for all sensor data (Now connected to ML).
+- **`backend/src/controllers/`** – Clinical logic for **ON/OFF medication states**.
+- **`backend/ml-service/`** – FastAPI + Ensemble Pickle (.pkl) models.
+
+---
+
+## 📊 ML Status: ACTIVE
+The "Future ML" mentioned in previous docs is now **LIVE**. Payloads from `src/models/` are sent to the backend, processed by an ensemble (Random Forest + SVM), and return a clinical risk score with "Wearing-Off" insights.

@@ -2,100 +2,103 @@ import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
-// IMPORTANT: Add .js at the end of the local import for ESM
-import { Session } from './models/Session.js'; 
+import swaggerJsdoc from 'swagger-jsdoc';
+import swaggerUi from 'swagger-ui-express';
+
+import authRoutes from './routes/authRoutes.js';
+import sessionRoutes from './routes/sessionRoutes.js';
 
 dotenv.config();
-
 const app = express();
+
+// --- SWAGGER CONFIGURATION ---
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'NeuroTrack API',
+      version: '1.0.0',
+      description: 'Parkinson\'s Detection System - AI Microservice Integration',
+    },
+    servers: [
+      {
+        url: `http://localhost:${process.env.PORT || 5000}`,
+      },
+    ],
+   
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'Enter your JWT token to access protected routes',
+        },
+      },
+    },
+    
+    security: [
+      {
+        bearerAuth: [],
+      },
+    ],
+    paths: {
+      '/api/sessions/analyze': {
+        post: {
+          summary: 'Analyze Parkinson\'s task data',
+          description: 'Sends sensor data to the ML microservice and returns risk scores.',
+          tags: ['Sessions'],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    userId: { type: 'string' },
+                    taskType: { 
+                      type: 'string', 
+                      enum: ['reaction_time', 'accelerometer', 'tracing'] 
+                    },
+                    payload: { type: 'object' },
+                    startedAt: { type: 'string' },
+                    endedAt: { type: 'string' }
+                  }
+                }
+              }
+            }
+          },
+          responses: {
+            '201': { description: 'Analysis successful and saved to MongoDB.' },
+            '401': { description: 'Unauthorized - Token missing or invalid.' },
+            '500': { description: 'Server error or ML service communication failure.' }
+          }
+        }
+      }
+    }
+  },
+  apis: ['./src/routes/*.ts', './routes/*.js'], 
+};
+
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
+// --- END SWAGGER CONFIGURATION ---
+
 app.use(express.json({ limit: '10mb' }));
 app.use(cors());
 
-const MONGO_URI = process.env.MONGO_URI || "";
-
-// Guard check for URI
-if (!MONGO_URI) {
-    console.error("❌ ERROR: MONGO_URI is missing in .env file!");
-    process.exit(1);
-}
-
-mongoose.connect(MONGO_URI)
-    .then(() => console.log("🍃 MongoDB Connected!"))
+mongoose.connect(process.env.MONGO_URI || "")
+    .then(() => console.log("🍃 MongoDB Connected "))
     .catch(err => console.error("❌ DB Error:", err));
 
-app.post('/api/analyze', async (req, res) => {
-    try {
-        const { taskType, payload } = req.body; // 👈 1. Extract the data first
-        let risk = "low"; // Default value
+// Swagger Route
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-        // 🧠 2. THE LOGIC GATE: Calculate risk based on the sensor type
-        if (taskType === 'reaction_time') {
-            const meanTime = payload.meanReactionTimeMs || 0; 
-            
-            if (meanTime > 800) risk = "high";
-            else if (meanTime > 500) risk = "moderate";
-            else risk = "low";
-        } else if (taskType === 'accelerometer') {
-            // You can add tremor logic here later!
-           const samples = payload.samples || [];
-           let peakValue = 0;
-           //const maxShake = Math.max(...samples.map(s => Math.abs(s.x)), ...samples.map(s => Math.abs(s.y)));
-           for (const s of samples) {
-             const absoluteX = Math.abs(s.x || 0);
-             const absoluteY = Math.abs(s.y || 0);
-             const currentMax = Math.max(absoluteX, absoluteY);
+// API Routes
+app.use('/api/auth', authRoutes);      
+app.use('/api/sessions', sessionRoutes); 
 
-             if (currentMax > peakValue) {
-                peakValue = currentMax;
-             }
-           }
-
-           if (peakValue > 8) {
-              risk = "high";      // Significant tremor detected
-            } else if (peakValue > 4) {
-              risk = "moderate";  // Slight instability
-            } else {
-               risk = "low";       // Stable movement
-           }
-        }
-
-        
-        const savedData = await Session.create({
-            ...req.body,
-            risk_level: risk
-        });
-
-        console.log(`✅ [${taskType.toUpperCase()}] Saved ID: ${savedData._id} | Risk: ${risk}`);
-        
-        
-        res.json({ 
-            success: true,
-            id: savedData._id,
-            risk_level: risk 
-        });
-
-    } catch (err) {
-        console.error("❌ Save Error:", err);
-        res.status(500).json({ error: "Server Error" });
-    }
-});
-// --- THE HISTORY ROUTE (GET) ---
-app.get('/api/history', async (req, res) => {
-    try {
-        console.log("🔍 Fetching Parkinson's test history...");
-        
-        // 1. Fetch all sessions from MongoDB
-        // 2. Sort by 'createdAt' so the newest test is at the top
-        const sessions = await Session.find().sort({ createdAt: -1 });
-
-        
-        res.status(200).json(sessions);
-    } catch (error) {
-        console.error("❌ Failed to fetch history:", error);
-        res.status(500).json({ error: "Internal Server Error" });
-    }
-});
-
-app.listen(5000, '0.0.0.0', () => {
-    console.log("🚀 Server running on port 5000");
+const PORT: number = Number(process.env.PORT) || 5000;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Clean Server on port ${PORT}`);
+    console.log(`📑 API Documentation available at http://localhost:${PORT}/api-docs`);
 });

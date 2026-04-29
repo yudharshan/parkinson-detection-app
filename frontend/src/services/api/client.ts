@@ -1,22 +1,47 @@
-/**
- * ML API client (placeholder for future backend integration).
- * Use models/ types for request/response shapes.
- */
-
+import axios from 'axios';
+import * as SecureStore from 'expo-secure-store';
 import { constants } from '@/constants';
 
-const BASE_URL = constants.api?.baseUrl ?? '';
+// Replace 192.168.x.x with your actual IPv4 address
+const BASE_URL = constants.api?.baseUrl || 'http://192.168.x.x:5000/api';
 
-export async function submitSession<T>(path: string, payload: T): Promise<{ ok: boolean; id?: string }> {
-  if (!BASE_URL) {
-    return { ok: false };
+const client = axios.create({
+  baseURL: BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Automatically attach JWT token for Node.js 'protect' middleware
+client.interceptors.request.use(
+  async (config: any) => {
+    try {
+      const token = await SecureStore.getItemAsync('userToken');
+      if (token && config.headers) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (error) {
+      console.error('Auth token fetch failed', error);
+    }
+    return config;
+  },
+  (error: any) => Promise.reject(error)
+);
+
+/**
+ * Main API caller for Accelerometer and Tapping tasks
+ */
+export async function submitSession<T>(path: string, payload: T) {
+  try {
+    const response = await client.post(path, payload);
+    return { 
+      ok: true, 
+      data: response.data 
+    };
+  } catch (error: any) {
+    console.error(`API Error: ${error.response?.data?.message || error.message}`);
+    return { ok: false, error: error.response?.data };
   }
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  const ok = res.ok;
-  const data = ok ? await res.json().catch(() => ({})) : {};
-  return { ok, id: data?.id };
 }
+
+export default client;

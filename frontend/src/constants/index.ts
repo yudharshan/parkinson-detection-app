@@ -4,7 +4,7 @@
 
 export const constants = {
   api: {
-    baseUrl: 'http://10.246.205.75:5000',
+   baseUrl: 'http://192.168.29.82:5000/api'
   },
   storageKeys: {
     sessions: 'neurotrack_sessions',

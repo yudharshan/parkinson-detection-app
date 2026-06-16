@@ -3,10 +3,11 @@ import * as SecureStore from 'expo-secure-store';
 import { constants } from '@/constants';
 
 // Replace 192.168.x.x with your actual IPv4 address
-const BASE_URL = constants.api?.baseUrl || 'http://192.168.x.x:5000/api';
+const BASE_URL = /*constants.api?.baseUrl ||*/ 'http://10.122.91.75:5000/api';
 
 const client = axios.create({
   baseURL: BASE_URL,
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },

@@ -12,7 +12,7 @@ import { protect } from '../middleware/authMiddleware.js';
 const router = Router();
 
 
-router.use(protect);
+//router.use(protect);
 
 
 router.post('/analyze', /*validateSession,*/ analyzeSession);

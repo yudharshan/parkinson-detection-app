@@ -17,6 +17,10 @@ export const protect = (req: AuthRequest, res: Response, next: NextFunction) => 
     else if (req.cookies && req.cookies.jwt) {
         token = req.cookies.jwt;
     }
+    // 3. Fallback to query param token for CSV downloads
+    else if (req.query && req.query.token) {
+        token = req.query.token as string;
+    }
 
     // 3. If a token was found in EITHER place, verify it
     if (token) {

@@ -130,6 +130,7 @@ async def predict_risk(payload: SessionData):
         return {
             "risk_level": risk,
             "score": round(final_score, 4),
+            "features": features.tolist()[0] if hasattr(features, 'tolist') else list(features),
             "analysis": {
                 "message": f"Inference completed using {task_type} ensemble.",
                 "rf_score": round(float(rf_prob), 4),

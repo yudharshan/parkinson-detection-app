@@ -7,9 +7,11 @@ import swaggerUi from 'swagger-ui-express';
 
 import authRoutes from './routes/authRoutes.js';
 import sessionRoutes from './routes/sessionRoutes.js';
+import clinicalRoutes from './routes/clinicalRoutes.js';
 
 dotenv.config();
 const app = express();
+
 
 // --- SWAGGER CONFIGURATION ---
 const swaggerOptions = {
@@ -86,9 +88,15 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use(express.json({ limit: '10mb' }));
 app.use(cors());
 
-mongoose.connect(process.env.MONGO_URI || "")
-    .then(() => console.log("🍃 MongoDB Connected "))
-    .catch(err => console.error("❌ DB Error:", err));
+const MONGO_URI = process.env.MONGO_URI || "";
+mongoose.connect(MONGO_URI)
+    .then(() => console.log("🍃 MongoDB Connected to Atlas"))
+    .catch(err => {
+        console.warn("⚠️ MongoDB Atlas connection failed. Attempting local MongoDB fallback...", err.message);
+        mongoose.connect("mongodb://127.0.0.1:27017/NeuroTrack")
+            .then(() => console.log("🍃 MongoDB Connected to Local Fallback"))
+            .catch(localErr => console.error("❌ DB Error (Atlas & Local):", localErr.message));
+    });
 
 // Swagger Route
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -96,6 +104,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // API Routes
 app.use('/api/auth', authRoutes);      
 app.use('/api/sessions', sessionRoutes); 
+app.use('/api', clinicalRoutes); 
 
 const PORT: number = Number(process.env.PORT) || 5000;
 app.listen(PORT, '0.0.0.0', () => {

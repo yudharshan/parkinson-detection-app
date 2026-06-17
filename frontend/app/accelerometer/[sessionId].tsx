@@ -1,29 +1,30 @@
-import { submitSession } from '@/services/api/client';
+import { submitSession } from '../../src/services/api/client';
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator, Switch } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Switch, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   subscribeAccelerometer,
   magnitude,
-} from '@/services/sensors/accelerometer';
-import { saveSession } from '@/services/storage/sessions';
-import { generateId } from '@/utils';
-import type { AccelerometerSample, AccelerometerSessionPayload, Session } from '@/models';
+} from '../../src/services/sensors/accelerometer';
+import { saveSession } from '../../src/services/storage/sessions';
+import { generateId } from '../../src/utils';
+import type { AccelerometerSample, AccelerometerSessionPayload, Session } from '../../src/models';
+import { useAuth } from '../../src/context/AuthContext';
 
-const RECORD_DURATION_MS = 10_000;
-const SAMPLE_INTERVAL_MS = 50; 
+const RECORD_DURATION_MS = 20_000; // Updated to 20s
+const SAMPLE_INTERVAL_MS = 100;    // Updated to ~10Hz (100ms)
 
 export default function TremorTestScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   
   // --- States ---
-  const [status, setStatus] = useState<'idle' | 'recording' | 'saving' | 'done'>('idle');
+  const [phase, setPhase] = useState<'instructions' | 'recording' | 'uploading'>('instructions');
+  const [medTimepoint, setMedTimepoint] = useState<string>('Immediately before Parkinson medication');
   const [samples, setSamples] = useState<AccelerometerSample[]>([]);
   const [liveMagnitude, setLiveMagnitude] = useState<number>(0);
-  const [countdownSec, setCountdownSec] = useState(10);
-  const [isMedsOn, setIsMedsOn] = useState(false); 
-  const [savedSessionId, setSavedSessionId] = useState<string | null>(null);
+  const [countdownSec, setCountdownSec] = useState(20);
 
   // --- Refs ---
   const startTimeRef = useRef<number>(0);
@@ -32,17 +33,24 @@ export default function TremorTestScreen() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const startRecording = () => {
-    setSavedSessionId(null);
     setSamples([]);
     samplesRef.current = [];
     setLiveMagnitude(0);
-    setCountdownSec(10);
+    setCountdownSec(20);
     startTimeRef.current = Date.now();
-    setStatus('recording');
+    setPhase('recording');
 
     // Start Sensor
     const sub = subscribeAccelerometer((sample) => {
-      samplesRef.current.push(sample);
+      // Map format exactly: {"x": 0.216, "y": -0.244, "z": -0.956, "timestamp": 6522.763}
+      const rawSample = {
+        x: parseFloat(sample.x.toFixed(4)),
+        y: parseFloat(sample.y.toFixed(4)),
+        z: parseFloat(sample.z.toFixed(4)),
+        timestamp: parseFloat(((Date.now() - startTimeRef.current) / 1000).toFixed(3))
+      } as any;
+
+      samplesRef.current.push(rawSample);
       setLiveMagnitude(magnitude(sample.x, sample.y, sample.z));
     }, SAMPLE_INTERVAL_MS);
     subscriptionRef.current = sub;
@@ -69,50 +77,39 @@ export default function TremorTestScreen() {
 
     const captured = [...samplesRef.current];
     setSamples(captured);
-    setStatus('saving');
-
-    const durationMs = Date.now() - startTime;
-    const payload: AccelerometerSessionPayload = {
-      samples: captured,
-      durationMs,
-    };
-
-    const session: Session<AccelerometerSessionPayload> = {
-      id: generateId(),
-      taskType: 'accelerometer',
-      startedAt: new Date(startTime).toISOString(),
-      endedAt: new Date().toISOString(),
-      payload,
-    };
+    setPhase('uploading');
 
     try {
-      await saveSession(session);
-
-      console.log("📤 Forwarding to Node.js Backend...");
-      const response = await submitSession('/sessions/analyze', {
-        taskType: 'accelerometer',
-        medicationStatus: isMedsOn ? 'ON' : 'OFF',
-        payload: { samples: captured }
+      console.log("📤 Forwarding to Clinical Gateway /test/tremor...");
+      const response = await submitSession('/test/tremor', {
+        userId: user?.userId,
+        rawSamples: captured,
+        medTimepoint
       });
 
-      if (response.ok) {
+      if (response.ok && response.data) {
         console.log("✅ AI Score Received:", response.data);
         
-        // 🔥 FIXED NAVIGATION PATH & PARAMS
         router.push({
-          pathname: '/accelerometer/results', 
-          params: { 
-            score: response.data.data.score, 
-            severity: response.data.data.risk_level 
+          pathname: '/results',
+          params: {
+            testType: 'tremor',
+            severityScore: response.data.data.severityScore,
+            baseConfidence: response.data.data.baseConfidence,
+            appliedOffset: response.data.data.appliedOffset,
+            interpretation: response.data.data.interpretation
           }
         });
+      } else {
+        Alert.alert('Analysis Failed', response.error?.message || 'Server failed to analyze tremor test.', [
+          { text: 'OK', onPress: () => setPhase('instructions') }
+        ]);
       }
-      
-      setSavedSessionId(session.id);
-      setStatus('done');
     } catch (error) {
       console.error("Upload failed:", error);
-      setStatus('done');
+      Alert.alert('Connection Error', 'Could not reach analysis gateway.', [
+        { text: 'OK', onPress: () => setPhase('instructions') }
+      ]);
     }
   };
 
@@ -123,83 +120,127 @@ export default function TremorTestScreen() {
     };
   }, []);
 
-  const isRecording = status === 'recording';
-  const isSaving = status === 'saving';
-  const isDone = status === 'done';
+  if (phase === 'instructions') {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.container}>
+          <Text style={styles.title}>Tremor Test</Text>
+          <Text style={styles.desc}>
+            Hold the phone flat and still in the palm of your hand for 20 seconds. Keep your hand as steady as possible.
+          </Text>
+
+          <View style={styles.section}>
+            <Text style={styles.label}>Select Medication State *</Text>
+            
+            <Pressable
+              style={[
+                styles.optionBtn,
+                medTimepoint === 'Immediately before Parkinson medication' && styles.optionBtnSelected,
+              ]}
+              onPress={() => setMedTimepoint('Immediately before Parkinson medication')}
+            >
+              <Text style={[
+                styles.optionText,
+                medTimepoint === 'Immediately before Parkinson medication' && styles.optionTextSelected,
+              ]}>
+                Immediately before Medication (OFF)
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[
+                styles.optionBtn,
+                medTimepoint === 'Just after Parkinson medication (at your best)' && styles.optionBtnSelected,
+              ]}
+              onPress={() => setMedTimepoint('Just after Parkinson medication (at your best)')}
+            >
+              <Text style={[
+                styles.optionText,
+                medTimepoint === 'Just after Parkinson medication (at your best)' && styles.optionTextSelected,
+              ]}>
+                Just after Medication (ON)
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={[
+                styles.optionBtn,
+                medTimepoint === 'Other / Regular State' && styles.optionBtnSelected,
+              ]}
+              onPress={() => setMedTimepoint('Other / Regular State')}
+            >
+              <Text style={[
+                styles.optionText,
+                medTimepoint === 'Other / Regular State' && styles.optionTextSelected,
+              ]}>
+                Other / Regular State
+              </Text>
+            </Pressable>
+          </View>
+
+          <Pressable style={styles.primaryButton} onPress={startRecording}>
+            <Text style={styles.primaryButtonText}>Start 20s Test</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (phase === 'uploading') {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={[styles.container, styles.center]}>
+          <ActivityIndicator size="large" color="#0A84FF" />
+          <Text style={styles.loadingText}>Uploading raw sensor data to gateway...</Text>
+          <Text style={styles.loadingSubtext}>Extracting features and running ML ensemble models...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <Text style={styles.title}>Tremor Assessment</Text>
-        
-        <View style={styles.medsRow}>
-          <Text style={styles.medsText}>Took Medication?</Text>
-          <Switch 
-            value={isMedsOn} 
-            onValueChange={setIsMedsOn} 
-            trackColor={{ false: "#ccc", true: "#0A84FF" }}
-          />
-          <Text style={{fontWeight: 'bold'}}>{isMedsOn ? "ON" : "OFF"}</Text>
-        </View>
+        <Text style={styles.title}>Recording Tremor</Text>
+        <Text style={styles.subtitle}>Hold the phone flat and still</Text>
 
         <View style={styles.magnitudeCard}>
           <Text style={styles.magnitudeLabel}>Live motion magnitude</Text>
           <Text style={styles.magnitudeValue}>
-            {isRecording || isSaving ? liveMagnitude.toFixed(3) : '0.000'}
+            {liveMagnitude.toFixed(3)}
           </Text>
           <Text style={styles.magnitudeUnit}>G</Text>
         </View>
 
-        {isRecording && (
-          <View style={styles.countdownWrap}>
-            <Text style={styles.countdownValue}>{countdownSec}s</Text>
-          </View>
-        )}
-
-        {isSaving && (
-          <View style={styles.savingWrap}>
-            <ActivityIndicator size="large" color="#0A84FF" />
-            <Text style={styles.savingText}>Analyzing with AI…</Text>
-          </View>
-        )}
-
-        <Pressable
-          style={[styles.primaryButton, (isRecording || isSaving) && styles.primaryButtonDisabled]}
-          onPress={startRecording}
-          disabled={isRecording || isSaving}
-        >
-          <Text style={styles.primaryButtonText}>
-            {isRecording ? 'Recording…' : isSaving ? 'Analyzing…' : 'Start 10s Test'}
-          </Text>
-        </Pressable>
-
-        {isDone && (
-          <Pressable style={styles.secondaryButton} onPress={() => router.back()}>
-            <Text style={styles.secondaryButtonText}>Back to Dashboard</Text>
-          </Pressable>
-        )}
+        <View style={styles.countdownWrap}>
+          <Text style={styles.countdownValue}>{countdownSec}s</Text>
+        </View>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F7FA' },
-  container: { flex: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 32 },
-  title: { fontSize: 26, fontWeight: '700', color: '#1A1A1A', marginBottom: 20 },
-  medsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, backgroundColor: '#fff', padding: 15, borderRadius: 12 },
-  medsText: { fontSize: 16, color: '#1A1A1A' },
-  magnitudeCard: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 24, marginBottom: 24, alignItems: 'center', elevation: 2 },
+  safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 32, justifyContent: 'center' },
+  center: { alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 28, fontWeight: '800', color: '#0F172A', marginBottom: 12, textAlign: 'center' },
+  desc: { fontSize: 16, color: '#64748B', lineHeight: 24, textAlign: 'center', marginBottom: 32 },
+  section: { marginBottom: 32 },
+  label: { fontSize: 15, fontWeight: '700', color: '#334155', marginBottom: 12, textAlign: 'center' },
+  optionBtn: { backgroundColor: '#FFFFFF', borderColor: '#CBD5E1', borderWidth: 1, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 20, marginBottom: 12, alignItems: 'center' },
+  optionBtnSelected: { backgroundColor: '#0A84FF', borderColor: '#0A84FF' },
+  optionText: { fontSize: 15, color: '#475569', fontWeight: '600' },
+  optionTextSelected: { color: '#FFFFFF' },
+  subtitle: { fontSize: 16, color: '#64748B', textAlign: 'center', marginBottom: 24 },
+  magnitudeCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24, marginBottom: 24, alignItems: 'center', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 2, borderWidth: 1, borderColor: '#F1F5F9' },
   magnitudeLabel: { fontSize: 16, color: '#64748B', marginBottom: 8 },
-  magnitudeValue: { fontSize: 42, fontWeight: '700', color: '#1A1A1A' },
+  magnitudeValue: { fontSize: 48, fontWeight: '700', color: '#0F172A' },
   magnitudeUnit: { fontSize: 20, color: '#64748B' },
   countdownWrap: { alignItems: 'center', marginBottom: 24 },
-  countdownValue: { fontSize: 48, fontWeight: '700', color: '#0A84FF' },
-  savingWrap: { alignItems: 'center', marginBottom: 24 },
-  savingText: { fontSize: 18, color: '#64748B', marginTop: 12 },
+  countdownValue: { fontSize: 56, fontWeight: '900', color: '#0A84FF' },
   primaryButton: { backgroundColor: '#0A84FF', paddingVertical: 18, borderRadius: 12, alignItems: 'center' },
-  primaryButtonDisabled: { opacity: 0.6 },
   primaryButtonText: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
-  secondaryButton: { marginTop: 20, alignItems: 'center' },
-  secondaryButtonText: { fontSize: 16, color: '#0A84FF', fontWeight: '600' },
+  loadingText: { fontSize: 18, color: '#0F172A', fontWeight: '700', marginTop: 20, textAlign: 'center' },
+  loadingSubtext: { fontSize: 14, color: '#64748B', marginTop: 8, textAlign: 'center' }
 });

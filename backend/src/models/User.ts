@@ -12,6 +12,8 @@ export interface IUser extends Document {
     dosage: string;
     time: string;
   }[];
+  role: 'patient' | 'clinician';
+  clinicianId?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,7 +42,16 @@ const UserSchema: Schema = new Schema({
     name: String,
     dosage: String,
     time: String
-  }]
+  }],
+  role: {
+    type: String,
+    enum: ['patient', 'clinician'],
+    default: 'patient'
+  },
+  clinicianId: {
+    type: Schema.Types.ObjectId,
+    ref: 'User'
+  }
 }, { 
   timestamps: true // Automatically creates 'createdAt' and 'updatedAt'
 });

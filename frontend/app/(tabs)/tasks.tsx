@@ -6,14 +6,14 @@ const TASK_CARDS = [
   {
     href: '/accelerometer/new',
     icon: 'axis' as const,
-    title: 'Accelerometer',
-    description: 'Record tremor data with device motion',
+    title: 'Resting Tremor',
+    description: 'Record resting tremor with device motion',
   },
   {
     href: '/reaction/new',
     icon: 'timer-sand' as const,
-    title: 'Reaction Time',
-    description: 'Measure tap response speed',
+    title: 'Finger Tapping',
+    description: 'Assess finger alternation response speed',
   },
   {
     href: '/tracing/new',

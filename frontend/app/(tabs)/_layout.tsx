@@ -1,7 +1,11 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../src/context/AuthContext';
 
 export default function TabsLayout() {
+  const { user } = useAuth();
+  const isClinician = user?.role === 'clinician';
+
   return (
     <Tabs
       screenOptions={{
@@ -12,9 +16,9 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Dashboard',
+          title: isClinician ? 'Patient Roster' : 'Dashboard',
           tabBarIcon: ({ color, size = 24 }) => (
-            <Ionicons name="home-outline" size={size} color={color} />
+            <Ionicons name={isClinician ? "people-outline" : "home-outline"} size={size} color={color} />
           ),
         }}
       />
@@ -22,6 +26,7 @@ export default function TabsLayout() {
         name="tasks"
         options={{
           title: 'Tasks',
+          href: isClinician ? null : undefined, // Hide tasks for clinician
           tabBarIcon: ({ color, size = 24 }) => (
             <Ionicons name="clipboard-outline" size={size} color={color} />
           ),
@@ -31,6 +36,7 @@ export default function TabsLayout() {
         name="history"
         options={{
           title: 'History',
+          href: isClinician ? null : undefined, // Hide history for clinician
           tabBarIcon: ({ color, size = 24 }) => (
             <Ionicons name="time-outline" size={size} color={color} />
           ),

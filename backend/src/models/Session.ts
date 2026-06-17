@@ -12,6 +12,19 @@ export interface ISession extends Document {
   
   lastMedicationTime?: Date;
   medicationStatus: 'ON' | 'OFF' | 'UNKNOWN';
+
+  // 🏥 New Clinical and Audit Trail Fields
+  testType: string;
+  rawFeatures?: any;
+  baseConfidence?: number;
+  appliedOffset?: number;
+  severityScore?: number;
+  interpretation?: string;
+  medTimepoint?: string;
+  timestamp?: Date;
+
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 const SessionSchema: Schema = new Schema({
@@ -46,6 +59,36 @@ const SessionSchema: Schema = new Schema({
     type: Schema.Types.ObjectId, 
     ref: 'User', 
     required: true 
+  },
+
+  // 🧪 Extended fields
+  testType: {
+    type: String,
+    required: true,
+    enum: ['tapping', 'tremor', 'tracing']
+  },
+  rawFeatures: {
+    type: Schema.Types.Mixed
+  },
+  baseConfidence: {
+    type: Number
+  },
+  appliedOffset: {
+    type: Number
+  },
+  severityScore: {
+    type: Number
+  },
+  interpretation: {
+    type: String
+  },
+  medTimepoint: {
+    type: String,
+    required: true
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now
   }
 }, { timestamps: true });
 

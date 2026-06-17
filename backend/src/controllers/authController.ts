@@ -21,7 +21,8 @@ export const signup = async (req: Request, res: Response) => {
             email,
             password: hashedPassword,
             age,
-            diagnosisYear
+            diagnosisYear,
+            role: 'patient' // Always default self-signups to patient
         });
 
         await newUser.save();
@@ -62,7 +63,9 @@ export const login = async (req: Request, res: Response) => {
             message: "Login successful",
             token,
             userId: user._id,
-            name: user.name
+            name: user.name,
+            role: user.role || 'patient',
+            clinicianId: user.clinicianId
         });
     } catch (error) {
         res.status(500).json({ message: "Login failed", error });

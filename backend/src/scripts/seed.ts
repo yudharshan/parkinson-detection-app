@@ -6,13 +6,19 @@ import { Session } from '../models/Session.js';
 
 dotenv.config();
 
-const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://Nuerostar:Neurostar@cluster0.js3aaf6.mongodb.net/NeuroTrack?retryWrites=true&w=majority";
+const MONGO_URI = process.env.MONGO_URI;
+
+// if (!MONGO_URI) {
+//   throw new Error("MONGO_URI is not defined");
+// }
+
+// await mongoose.connect(MONGO_URI as string);
 
 async function runSeed() {
   try {
     console.log("🍃 Connecting to MongoDB Atlas...");
     try {
-      await mongoose.connect(MONGO_URI);
+      await mongoose.connect(MONGO_URI as string);
     } catch (dbErr) {
       console.log("⚠️ Atlas Connection failed, trying local MongoDB fallback...");
       await mongoose.connect("mongodb://127.0.0.1:27017/NeuroTrack");

@@ -16,10 +16,10 @@ const TASK_CARDS = [
     description: 'Assess finger alternation response speed',
   },
   {
-    href: '/tracing/new',
-    icon: 'draw' as const,
-    title: 'Tracing',
-    description: 'Trace shapes for motor assessment',
+    href: '/demo',
+    icon: 'play-circle-outline' as const,
+    title: 'Demo Mode',
+    description: 'Run a simulated test through the ML pipeline (no sensors needed)',
   },
   {
     href: '/settings',
@@ -45,7 +45,7 @@ export default function TasksScreen() {
             <MaterialCommunityIcons
               name={task.icon}
               size={40}
-              color="#0A84FF"
+              color="#B26A43"
               style={styles.icon}
             />
             <Text style={styles.cardTitle}>{task.title}</Text>
@@ -58,17 +58,17 @@ export default function TasksScreen() {
 }
 
 const styles = StyleSheet.create({
-  scroll: { flex: 1, backgroundColor: '#F5F7FA' },
+  scroll: { flex: 1, backgroundColor: '#F7F1E6' },
   scrollContent: { padding: 24, paddingBottom: 40 },
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: '#3A2E25',
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 16,
-    color: '#64748B',
+    color: '#8A7765',
     marginBottom: 24,
   },
   card: {
@@ -87,12 +87,12 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: '#3A2E25',
     marginBottom: 4,
   },
   cardDescription: {
     fontSize: 14,
-    color: '#64748B',
+    color: '#8A7765',
     textAlign: 'center',
   },
 });

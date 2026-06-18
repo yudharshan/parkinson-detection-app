@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator, Dimensions, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator, Dimensions, Alert, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/context/AuthContext';
@@ -27,6 +27,8 @@ export default function HomeDashboardScreen() {
 
   // --- Clinician States ---
   const [roster, setRoster] = useState<PatientRosterItem[]>([]);
+  const [linkCode, setLinkCode] = useState('');
+  const [linking, setLinking] = useState(false);
 
   // --- Patient States ---
   const [history, setHistory] = useState<any[]>([]);
@@ -54,28 +56,11 @@ export default function HomeDashboardScreen() {
         }
       } else {
         // Fetch Patient Data
-        const [histRes, dailyRes] = await Promise.all([
-          client.get(`/tests/history/${user?.userId}`),
-          client.get(`/tests/daily-pattern/${user?.userId}`)
-        ]);
-
-        if (histRes.data?.success && dailyRes.data?.success) {
+        const histRes = await client.get(`/tests/history/${user?.userId}`);
+        if (histRes.data?.success) {
           setHistory(histRes.data.data);
-          setDailyPattern(dailyRes.data.data);
         } else {
           setErrorMsg('Failed to load assessment history.');
-        }
-
-        // Fetch Off Periods for last 7 days
-        const endDay = new Date();
-        const startDay = new Date();
-        startDay.setDate(endDay.getDate() - 6);
-        const startStr = startDay.toISOString().split('T')[0];
-        const endStr = endDay.toISOString().split('T')[0];
-
-        const offRes = await client.get(`/analysis/off-period/${user?.userId}/range?start=${startStr}&end=${endStr}`);
-        if (offRes.data?.success) {
-          setOffPeriods(offRes.data.data);
         }
       }
     } catch (error: any) {
@@ -89,6 +74,25 @@ export default function HomeDashboardScreen() {
   useEffect(() => {
     fetchData();
   }, [user, token, isClinician]);
+
+  const handleLinkPatient = async () => {
+    if (!linkCode.trim()) return;
+    setLinking(true);
+    try {
+      const res = await client.post('/clinician/link', { patientCode: linkCode.trim().toUpperCase() });
+      if (res.data?.success) {
+        Alert.alert('Linked', `Patient ${res.data.data.name} added to your roster.`);
+        setLinkCode('');
+        fetchData();
+      } else {
+        Alert.alert('Not found', res.data?.message || 'No patient with that ID.');
+      }
+    } catch (e: any) {
+      Alert.alert('Not found', e.response?.data?.message || 'No patient with that ID.');
+    } finally {
+      setLinking(false);
+    }
+  };
 
   const handleLogout = async () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -104,7 +108,7 @@ export default function HomeDashboardScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#0A84FF" />
+          <ActivityIndicator size="large" color="#B26A43" />
           <Text style={styles.loadingText}>Fetching clinical logs...</Text>
         </View>
       </SafeAreaView>
@@ -115,7 +119,7 @@ export default function HomeDashboardScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
+          <Ionicons name="alert-circle-outline" size={48} color="#B0503B" />
           <Text style={styles.errorTitle}>Network Connection Offline</Text>
           <Text style={styles.errorText}>{errorMsg}</Text>
           <Pressable style={styles.retryBtn} onPress={fetchData}>
@@ -136,13 +140,13 @@ export default function HomeDashboardScreen() {
     const getBadgeStyle = (status: PatientRosterItem['status']) => {
       switch (status) {
         case 'Worsening':
-          return { bg: '#FFCDD2', text: '#C62828' };
+          return { bg: '#ECCCC0', text: '#9C3E2C' };
         case 'Needs Monitoring':
-          return { bg: '#FFE0B2', text: '#E65100' };
+          return { bg: '#EBD9B4', text: '#A86A1E' };
         case 'Stable':
-          return { bg: '#DCEDC8', text: '#2E7D32' };
+          return { bg: '#E3E8CD', text: '#5B7044' };
         default:
-          return { bg: '#F1F5F9', text: '#64748B' };
+          return { bg: '#EFE7D8', text: '#8A7765' };
       }
     };
 
@@ -154,11 +158,30 @@ export default function HomeDashboardScreen() {
             <Text style={styles.subtitle}>Welcome back, Dr. {user?.name}</Text>
           </View>
           <Pressable style={styles.iconBtn} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={24} color="#0F172A" />
+            <Ionicons name="log-out-outline" size={24} color="#3A2E25" />
           </Pressable>
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Add a patient</Text>
+            <Text style={styles.cardSub}>Enter the Patient ID your patient shares with you.</Text>
+            <View style={styles.linkRow}>
+              <TextInput
+                style={styles.linkInput}
+                placeholder="PT-XXXXXX"
+                placeholderTextColor="#A99A88"
+                value={linkCode}
+                onChangeText={setLinkCode}
+                autoCapitalize="characters"
+                autoCorrect={false}
+              />
+              <Pressable style={styles.linkBtn} onPress={handleLinkPatient} disabled={linking}>
+                <Text style={styles.linkBtnText}>{linking ? '…' : 'Add'}</Text>
+              </Pressable>
+            </View>
+          </View>
+
           <Text style={styles.sectionHeader}>Patient Triage Roster</Text>
           <Text style={styles.sectionSub}>Sorted by alert status. Select a patient for historical analysis.</Text>
 
@@ -211,36 +234,37 @@ export default function HomeDashboardScreen() {
 
   // Colors based on severity scores
   const getSeverityBadge = (score?: number) => {
-    if (score === undefined) return { label: 'No Data', bg: '#F1F5F9', text: '#64748B' };
-    if (score <= 0.45) return { label: 'Low', bg: '#DCEDC8', text: '#2E7D32' };
-    if (score <= 0.75) return { label: 'Moderate', bg: '#FFE0B2', text: '#E65100' };
-    return { label: 'High (OFF)', bg: '#FFCDD2', text: '#C62828' };
+    if (score === undefined) return { label: 'No Data', bg: '#EFE7D8', text: '#8A7765' };
+    if (score < 0.4) return { label: 'Low', bg: '#E3E8CD', text: '#5B7044' };
+    if (score <= 0.65) return { label: 'Inconclusive', bg: '#EBD9B4', text: '#A86A1E' };
+    return { label: 'Elevated', bg: '#ECCCC0', text: '#9C3E2C' };
   };
 
   const tappingBadge = getSeverityBadge(latestTapping?.severityScore ?? latestTapping?.score);
   const tremorBadge = getSeverityBadge(latestTremor?.severityScore ?? latestTremor?.score);
 
-  // --- Graph 1 (Severity Over Time) Data Prep ---
+  // --- Graph 1 (Severity Over Time) Data Prep --- up to last 20, horizontally scrollable
   const hasChart1Data = tappingTests.length > 0 || tremorTests.length > 0;
-  const lineChartData = {
-    labels: history.slice(0, 5).reverse().map(s => {
-      const d = new Date(s.timestamp || s.createdAt);
-      return `${d.getMonth() + 1}/${d.getDate()}`;
-    }),
-    datasets: [
-      {
-        data: tappingTests.slice(0, 5).reverse().map(s => s.severityScore || s.score || 0),
-        color: (opacity = 1) => `rgba(10, 132, 255, ${opacity})`,
-        strokeWidth: 2
-      },
-      {
-        data: tremorTests.slice(0, 5).reverse().map(s => s.severityScore || s.score || 0),
-        color: (opacity = 1) => `rgba(235, 87, 87, ${opacity})`,
-        strokeWidth: 2
-      }
-    ],
-    legend: ['Tapping', 'Tremor']
+  const fmtTime = (s: any) => {
+    const d = new Date(s.timestamp || s.createdAt);
+    let h = d.getHours();
+    const ampm = h >= 12 ? 'pm' : 'am';
+    h = h % 12 || 12;
+    return `${d.getMonth() + 1}/${d.getDate()} ${h}${ampm}`;
   };
+  const recentHist = [...history].slice(0, 20).reverse();
+  const tapData = tappingTests.slice(0, 20).reverse().map(s => s.severityScore || s.score || 0);
+  const tremData = tremorTests.slice(0, 20).reverse().map(s => s.severityScore || s.score || 0);
+  const lineDatasets: any[] = [];
+  if (tapData.length) lineDatasets.push({ data: tapData, color: (o = 1) => `rgba(178, 106, 67, ${o})`, strokeWidth: 2 });
+  if (tremData.length) lineDatasets.push({ data: tremData, color: (o = 1) => `rgba(193, 107, 78, ${o})`, strokeWidth: 2 });
+  if (!lineDatasets.length) lineDatasets.push({ data: [0] });
+  const lineChartData = {
+    labels: recentHist.length ? recentHist.map(fmtTime) : ['No Data'],
+    datasets: lineDatasets,
+    legend: tapData.length && tremData.length ? ['Tapping', 'Tremor'] : tapData.length ? ['Tapping'] : ['Tremor'],
+  };
+  const dashChartWidth = Math.max(screenWidth - 48, recentHist.length * 70);
 
   // --- Graph 2 (Daily Pattern) Data Prep ---
   const hasChart2Data = dailyPattern && (dailyPattern.morning?.count > 0 || dailyPattern.afternoon?.count > 0 || dailyPattern.evening?.count > 0 || dailyPattern.night?.count > 0);
@@ -258,11 +282,11 @@ export default function HomeDashboardScreen() {
 
   // --- Graph 4 (Long-Term Trend) Data Prep ---
   const computeTrend = () => {
-    if (history.length < 2) return { text: 'Insufficient Data', icon: 'help-outline', color: '#64748B' };
+    if (history.length < 2) return { text: 'Insufficient Data', icon: 'help-outline', color: '#8A7765' };
     
     const limit = trendRange === 'week' ? 7 : 30;
     const windowTests = history.slice(0, limit);
-    if (windowTests.length < 2) return { text: 'Insufficient Data', icon: 'help-outline', color: '#64748B' };
+    if (windowTests.length < 2) return { text: 'Insufficient Data', icon: 'help-outline', color: '#8A7765' };
 
     const mid = Math.floor(windowTests.length / 2);
     const older = windowTests.slice(mid);
@@ -273,9 +297,9 @@ export default function HomeDashboardScreen() {
 
     const diff = avgNewer - avgOlder;
 
-    if (diff >= 0.1) return { text: 'Worsening Trend', icon: 'arrow-up-circle-outline', color: '#EF4444' };
-    if (diff <= -0.1) return { text: 'Improving Trend', icon: 'arrow-down-circle-outline', color: '#10B981' };
-    return { text: 'Stable Symptoms', icon: 'trending-flat-outline', color: '#3B82F6' };
+    if (diff >= 0.1) return { text: 'Worsening Trend', icon: 'arrow-up-circle-outline', color: '#B0503B' };
+    if (diff <= -0.1) return { text: 'Improving Trend', icon: 'arrow-down-circle-outline', color: '#6E8B5A' };
+    return { text: 'Stable Symptoms', icon: 'trending-flat-outline', color: '#B26A43' };
   };
 
   const trendResult = computeTrend();
@@ -288,12 +312,19 @@ export default function HomeDashboardScreen() {
           <Text style={styles.subtitle}>Symptom Monitoring Dashboard</Text>
         </View>
         <Pressable style={styles.iconBtn} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={24} color="#0F172A" />
+          <Ionicons name="log-out-outline" size={24} color="#3A2E25" />
         </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        
+
+        {/* Shareable Patient ID for doctor linking */}
+        <View style={styles.idCard}>
+          <Text style={styles.idLabel}>Your Patient ID</Text>
+          <Text style={styles.idValue}>{user?.patientCode || '—'}</Text>
+          <Text style={styles.idHint}>Share this with your doctor so they can monitor your results.</Text>
+        </View>
+
         {/* Test Cards (Patient Flow: Section 6) */}
         <View style={styles.testSectionRow}>
           <Pressable 
@@ -301,7 +332,7 @@ export default function HomeDashboardScreen() {
             onPress={() => router.push('/reaction/new')}
           >
             <View style={styles.testCardHeader}>
-              <Ionicons name="finger-print-outline" size={28} color="#0A84FF" />
+              <Ionicons name="finger-print-outline" size={28} color="#B26A43" />
               <View style={[styles.smallBadge, { backgroundColor: tappingBadge.bg }]}>
                 <Text style={[styles.smallBadgeText, { color: tappingBadge.text }]}>{tappingBadge.label}</Text>
               </View>
@@ -318,7 +349,7 @@ export default function HomeDashboardScreen() {
             onPress={() => router.push('/accelerometer/new')}
           >
             <View style={styles.testCardHeader}>
-              <Ionicons name="pulse-outline" size={28} color="#EB5757" />
+              <Ionicons name="pulse-outline" size={28} color="#C16B4E" />
               <View style={[styles.smallBadge, { backgroundColor: tremorBadge.bg }]}>
                 <Text style={[styles.smallBadgeText, { color: tremorBadge.text }]}>{tremorBadge.label}</Text>
               </View>
@@ -367,23 +398,25 @@ export default function HomeDashboardScreen() {
           <Text style={styles.cardTitle}>Severity Over Time</Text>
           <Text style={styles.cardSub}>Shows score tracking for Tapping vs Accelerometer tests.</Text>
           {hasChart1Data ? (
-            <LineChart
-              data={lineChartData}
-              width={screenWidth - 48}
-              height={200}
-              chartConfig={{
-                backgroundColor: '#FFFFFF',
-                backgroundGradientFrom: '#FFFFFF',
-                backgroundGradientTo: '#FFFFFF',
-                decimalPlaces: 2,
-                color: (opacity = 1) => `rgba(15, 23, 42, ${opacity})`,
-                labelColor: (opacity = 1) => `rgba(100, 116, 139, ${opacity})`,
-                propsForBackgroundLines: { strokeWidth: 1, stroke: '#F1F5F9' },
-                propsForDots: { r: '4' }
-              }}
-              bezier
-              style={styles.chart}
-            />
+            <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+              <LineChart
+                data={lineChartData}
+                width={dashChartWidth}
+                height={200}
+                chartConfig={{
+                  backgroundColor: '#FFFFFF',
+                  backgroundGradientFrom: '#FFFFFF',
+                  backgroundGradientTo: '#FFFFFF',
+                  decimalPlaces: 2,
+                  color: (opacity = 1) => `rgba(58, 46, 37, ${opacity})`,
+                  labelColor: (opacity = 1) => `rgba(138, 119, 101, ${opacity})`,
+                  propsForBackgroundLines: { strokeWidth: 1, stroke: '#EFE7D8' },
+                  propsForDots: { r: '4' }
+                }}
+                bezier
+                style={styles.chart}
+              />
+            </ScrollView>
           ) : (
             <View style={styles.emptyChart}>
               <Text style={styles.emptyText}>Perform assessments to generate timecharts.</Text>
@@ -391,82 +424,6 @@ export default function HomeDashboardScreen() {
           )}
         </View>
 
-        {/* Graph 2: Daily Pattern */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Daily Medication Pattern</Text>
-          <Text style={styles.cardSub}>Averages severity across time-of-day buckets to monitor wear-off cycles.</Text>
-          {hasChart2Data ? (
-            <BarChart
-              data={barChartData}
-              width={screenWidth - 48}
-              height={200}
-              yAxisLabel=""
-              yAxisSuffix=""
-              chartConfig={{
-                backgroundColor: '#FFFFFF',
-                backgroundGradientFrom: '#FFFFFF',
-                backgroundGradientTo: '#FFFFFF',
-                decimalPlaces: 2,
-                color: (opacity = 1) => `rgba(10, 132, 255, ${opacity})`,
-                labelColor: (opacity = 1) => `rgba(100, 116, 139, ${opacity})`,
-                propsForBackgroundLines: { strokeWidth: 0 }
-              }}
-              style={styles.chart}
-            />
-          ) : (
-            <View style={styles.emptyChart}>
-              <Text style={styles.emptyText}>Not enough data to map daily fluctuations.</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Graph 3: Off-Period Calendar strip */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Medication Off-Period Strip</Text>
-          <Text style={styles.cardSub}>Requires both a Before and After test on the same calendar day.</Text>
-          
-          <View style={styles.calendarStrip}>
-            {offPeriods.length === 0 ? (
-              <Text style={styles.emptyText}>No historical off-periods registered this week.</Text>
-            ) : (
-              offPeriods.map((day, idx) => {
-                const getStripColor = (status: string) => {
-                  if (status === 'Good ON State') return '#10B981';
-                  if (status === 'Normal Wear-Off') return '#F59E0B';
-                  if (status === 'ABNORMAL OFF-PERIOD') return '#EF4444';
-                  return '#CBD5E1';
-                };
-
-                return (
-                  <Pressable
-                    key={day.date}
-                    style={[styles.calendarCell, { backgroundColor: getStripColor(day.status) }]}
-                    onPress={() => setSelectedOffPeriodDay(day)}
-                  >
-                    <Text style={styles.calendarDateText}>{new Date(day.date).getDate()}</Text>
-                  </Pressable>
-                );
-              })
-            )}
-          </View>
-
-          {selectedOffPeriodDay && (
-            <View style={styles.offPeriodDetail}>
-              <Text style={styles.offDetailTitle}>Off-Period Analysis ({new Date(selectedOffPeriodDay.date).toLocaleDateString()})</Text>
-              <Text style={styles.offDetailStatus}>{selectedOffPeriodDay.status}</Text>
-              
-              {selectedOffPeriodDay.status !== 'INSUFFICIENT_DATA' ? (
-                <View style={styles.offDetailRow}>
-                  <Text style={styles.offDetailText}>Before Med Severity: {selectedOffPeriodDay.beforeScore?.toFixed(2)}</Text>
-                  <Text style={styles.offDetailText}>After Med Severity: {selectedOffPeriodDay.afterScore?.toFixed(2)}</Text>
-                  <Text style={styles.offDetailText}>Delta Shift: {selectedOffPeriodDay.delta?.toFixed(2)}</Text>
-                </View>
-              ) : (
-                <Text style={styles.offDetailReason}>{selectedOffPeriodDay.message}</Text>
-              )}
-            </View>
-          )}
-        </View>
 
       </ScrollView>
     </SafeAreaView>
@@ -474,59 +431,67 @@ export default function HomeDashboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
+  safeArea: { flex: 1, backgroundColor: '#F7F1E6' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  loadingText: { fontSize: 16, color: '#64748B', marginTop: 12, fontWeight: '600' },
-  errorTitle: { fontSize: 20, fontWeight: '700', color: '#EF4444', marginTop: 16 },
-  errorText: { fontSize: 15, color: '#64748B', textAlign: 'center', marginTop: 8, marginBottom: 24 },
-  retryBtn: { backgroundColor: '#0A84FF', paddingVertical: 12, paddingHorizontal: 28, borderRadius: 10, marginBottom: 12 },
+  loadingText: { fontSize: 16, color: '#8A7765', marginTop: 12, fontWeight: '600' },
+  errorTitle: { fontSize: 20, fontWeight: '700', color: '#B0503B', marginTop: 16 },
+  errorText: { fontSize: 15, color: '#8A7765', textAlign: 'center', marginTop: 8, marginBottom: 24 },
+  retryBtn: { backgroundColor: '#B26A43', paddingVertical: 12, paddingHorizontal: 28, borderRadius: 10, marginBottom: 12 },
   retryBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
   logoutBtn: { paddingVertical: 12 },
-  logoutBtnText: { color: '#EF4444', fontSize: 15, fontWeight: '700' },
+  logoutBtnText: { color: '#B0503B', fontSize: 15, fontWeight: '700' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 16 },
-  greeting: { fontSize: 24, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
-  subtitle: { fontSize: 15, color: '#64748B', marginTop: 2 },
-  iconBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center' },
+  greeting: { fontSize: 24, fontWeight: '800', color: '#3A2E25', letterSpacing: -0.5 },
+  subtitle: { fontSize: 15, color: '#8A7765', marginTop: 2 },
+  iconBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#EFE7D8', alignItems: 'center', justifyContent: 'center' },
   scrollContainer: { padding: 24, paddingBottom: 48 },
-  sectionHeader: { fontSize: 20, fontWeight: '700', color: '#0F172A', marginBottom: 2 },
-  sectionSub: { fontSize: 14, color: '#64748B', marginBottom: 20 },
-  rosterCard: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 18, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1, borderWidth: 1, borderColor: '#F1F5F9' },
+  sectionHeader: { fontSize: 20, fontWeight: '700', color: '#3A2E25', marginBottom: 2 },
+  sectionSub: { fontSize: 14, color: '#8A7765', marginBottom: 20 },
+  rosterCard: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 18, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', shadowColor: '#3A2E25', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1, borderWidth: 1, borderColor: '#EFE7D8' },
   rosterInfo: { flex: 1 },
-  patientName: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
-  lastTestDate: { fontSize: 13, color: '#64748B', marginTop: 4 },
+  patientName: { fontSize: 16, fontWeight: '700', color: '#3A2E25' },
+  lastTestDate: { fontSize: 13, color: '#8A7765', marginTop: 4 },
   statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
   statusBadgeText: { fontSize: 12, fontWeight: '700' },
-  emptyCard: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
-  emptyText: { color: '#64748B', fontSize: 15, textAlign: 'center' },
+  emptyCard: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: '#EFE7D8' },
+  emptyText: { color: '#8A7765', fontSize: 15, textAlign: 'center' },
   testSectionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-  testCard: { flex: 0.48, backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1 },
+  testCard: { flex: 0.48, backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#EFE7D8', shadowColor: '#3A2E25', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1 },
   testCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  testCardTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 4 },
-  testCardVal: { fontSize: 28, fontWeight: '800', color: '#0F172A' },
-  testCardLabel: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  testCardTitle: { fontSize: 16, fontWeight: '800', color: '#3A2E25', marginBottom: 4 },
+  testCardVal: { fontSize: 28, fontWeight: '800', color: '#3A2E25' },
+  testCardLabel: { fontSize: 12, color: '#8A7765', marginTop: 2 },
   smallBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
   smallBadgeText: { fontSize: 10, fontWeight: '700' },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, marginBottom: 20, shadowColor: '#0F172A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1, borderWidth: 1, borderColor: '#F1F5F9' },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, marginBottom: 20, shadowColor: '#3A2E25', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1, borderWidth: 1, borderColor: '#EFE7D8' },
   trendHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  cardTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
-  cardSub: { fontSize: 13, color: '#64748B', marginTop: 2, marginBottom: 12 },
-  toggleRow: { flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 8, padding: 2 },
+  cardTitle: { fontSize: 18, fontWeight: '700', color: '#3A2E25' },
+  cardSub: { fontSize: 13, color: '#8A7765', marginTop: 2, marginBottom: 12 },
+  toggleRow: { flexDirection: 'row', backgroundColor: '#EFE7D8', borderRadius: 8, padding: 2 },
   toggleBtn: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6 },
   toggleBtnActive: { backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2 },
-  toggleText: { fontSize: 12, color: '#64748B', fontWeight: '600' },
-  toggleTextActive: { color: '#0A84FF', fontWeight: '700' },
+  toggleText: { fontSize: 12, color: '#8A7765', fontWeight: '600' },
+  toggleTextActive: { color: '#B26A43', fontWeight: '700' },
   trendRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 8 },
   trendValue: { fontSize: 22, fontWeight: '800', marginLeft: 8 },
-  trendDesc: { fontSize: 13, color: '#64748B', lineHeight: 18 },
+  trendDesc: { fontSize: 13, color: '#8A7765', lineHeight: 18 },
   chart: { marginVertical: 8, borderRadius: 16 },
   emptyChart: { height: 150, alignItems: 'center', justifyContent: 'center' },
   calendarStrip: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 12 },
   calendarCell: { flex: 1, height: 44, borderRadius: 8, marginHorizontal: 2, alignItems: 'center', justifyContent: 'center' },
   calendarDateText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
-  offPeriodDetail: { backgroundColor: '#F8FAFC', borderRadius: 10, padding: 12, marginTop: 12, borderWidth: 1, borderColor: '#E2E8F0' },
-  offDetailTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A' },
-  offDetailStatus: { fontSize: 15, fontWeight: '800', color: '#0A84FF', marginVertical: 4 },
+  offPeriodDetail: { backgroundColor: '#F7F1E6', borderRadius: 10, padding: 12, marginTop: 12, borderWidth: 1, borderColor: '#E7DBC9' },
+  offDetailTitle: { fontSize: 14, fontWeight: '700', color: '#3A2E25' },
+  offDetailStatus: { fontSize: 15, fontWeight: '800', color: '#B26A43', marginVertical: 4 },
   offDetailRow: { marginTop: 4 },
-  offDetailText: { fontSize: 13, color: '#475569', marginVertical: 2 },
-  offDetailReason: { fontSize: 13, color: '#64748B', lineHeight: 18, marginTop: 4 }
+  offDetailText: { fontSize: 13, color: '#6B5848', marginVertical: 2 },
+  offDetailReason: { fontSize: 13, color: '#8A7765', lineHeight: 18, marginTop: 4 },
+  linkRow: { flexDirection: 'row', gap: 10, marginTop: 6 },
+  linkInput: { flex: 1, backgroundColor: '#F7F1E6', borderWidth: 1, borderColor: '#D9CBB8', borderRadius: 10, padding: 12, fontSize: 15, color: '#3A2E25' },
+  linkBtn: { backgroundColor: '#B26A43', borderRadius: 10, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center' },
+  linkBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
+  idCard: { backgroundColor: '#B26A43', borderRadius: 16, padding: 20, marginBottom: 20 },
+  idLabel: { color: '#F7E9DE', fontSize: 13, fontWeight: '600' },
+  idValue: { color: '#FFFFFF', fontSize: 28, fontWeight: '900', letterSpacing: 1, marginVertical: 4 },
+  idHint: { color: '#F1DFD2', fontSize: 12 },
 });

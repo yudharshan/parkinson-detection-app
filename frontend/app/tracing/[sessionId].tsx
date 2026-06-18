@@ -154,7 +154,7 @@ export default function TracingScreen() {
               <Polyline
                 points={polylinePoints}
                 fill="none"
-                stroke="#0A84FF"
+                stroke="#B26A43"
                 strokeWidth={4}
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -220,10 +220,10 @@ export default function TracingScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F5F7FA' },
+  safeArea: { flex: 1, backgroundColor: '#F7F1E6' },
   container: { flex: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 32 },
-  title: { fontSize: 26, fontWeight: '700', color: '#1A1A1A', marginBottom: 8 },
-  subtitle: { fontSize: 17, color: '#64748B', marginBottom: 24 },
+  title: { fontSize: 26, fontWeight: '700', color: '#3A2E25', marginBottom: 8 },
+  subtitle: { fontSize: 17, color: '#8A7765', marginBottom: 24 },
   canvasWrap: {
     width: CANVAS_SIZE,
     height: CANVAS_SIZE,
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   primaryButton: {
-    backgroundColor: '#0A84FF',
+    backgroundColor: '#B26A43',
     paddingVertical: 18,
     borderRadius: 12,
     alignItems: 'center',
@@ -255,9 +255,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E8ECF0',
   },
-  scoreLabel: { fontSize: 18, fontWeight: '600', color: '#1A1A1A' },
-  scoreValue: { fontSize: 24, fontWeight: '700', color: '#1A1A1A' },
-  meta: { fontSize: 14, color: '#64748B', marginBottom: 16 },
+  scoreLabel: { fontSize: 18, fontWeight: '600', color: '#3A2E25' },
+  scoreValue: { fontSize: 24, fontWeight: '700', color: '#3A2E25' },
+  meta: { fontSize: 14, color: '#8A7765', marginBottom: 16 },
   secondaryButton: { paddingVertical: 16, alignItems: 'center' },
-  secondaryButtonText: { fontSize: 18, fontWeight: '600', color: '#0A84FF' },
+  secondaryButtonText: { fontSize: 18, fontWeight: '600', color: '#B26A43' },
 });

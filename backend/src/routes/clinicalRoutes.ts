@@ -3,32 +3,28 @@ import { protect } from '../middleware/authMiddleware.js';
 import {
   submitTappingTest,
   submitTremorTest,
-  getOffPeriodAnalysis,
-  getOffPeriodRangeAnalysis,
   getTestHistory,
   getDailyPattern,
+  linkPatient,
   getClinicianRoster,
-  exportPatientData
+  exportPatientData,
 } from '../controllers/clinicalController.js';
 
 const router = Router();
 
-// Secure all clinical routes using protect JWT check
+// Lenient auth (attaches req.user if a token is present; never blocks the demo).
 router.use(protect);
 
-// Test submission routes
+// Test submission
 router.post('/test/tapping', submitTappingTest);
 router.post('/test/tremor', submitTremorTest);
 
-// Off-period analysis routes
-router.get('/analysis/off-period/:userId', getOffPeriodAnalysis);
-router.get('/analysis/off-period/:userId/range', getOffPeriodRangeAnalysis);
-
-// General history and pattern aggregation
+// History + simple time-of-day pattern (off-period / triage dropped)
 router.get('/tests/history/:userId', getTestHistory);
 router.get('/tests/daily-pattern/:userId', getDailyPattern);
 
-// Clinician specific routes
+// Doctor <-> patient
+router.post('/clinician/link', linkPatient);
 router.get('/clinician/roster/:clinicianId', getClinicianRoster);
 router.get('/clinician/export/:patientId', exportPatientData);
 

@@ -1,9 +1,11 @@
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '../storage/secureStorage';
 import { constants } from '@/constants';
 
-// Replace 192.168.x.x with your actual IPv4 address
-const BASE_URL = 'http://192.168.29.82:5000/api';
+// API base URL. Set EXPO_PUBLIC_API_URL in frontend/.env to your laptop's LAN IP
+// when testing on a physical phone, e.g. http://192.168.1.23:5000/api
+// (a phone cannot reach "localhost"). Web/emulator can use http://localhost:5000/api.
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.29.82:5000/api';
 
 const client = axios.create({
   baseURL: BASE_URL,

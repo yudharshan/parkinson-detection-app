@@ -87,14 +87,14 @@ export default function AlternatingFingerTappingScreen() {
       });
 
       if (response.ok && response.data) {
+        console.log('✅ Tapping AI Score Received:', response.data);
         router.push({
           pathname: '/results',
           params: {
             testType: 'tapping',
             severityScore: response.data.data.severityScore,
-            baseConfidence: response.data.data.baseConfidence,
-            appliedOffset: response.data.data.appliedOffset,
-            interpretation: response.data.data.interpretation
+            interpretation: response.data.data.interpretation,
+            features: JSON.stringify(response.data.data.rawFeatures || {}),
           }
         });
       } else {
@@ -186,7 +186,7 @@ export default function AlternatingFingerTappingScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={[styles.container, styles.center]}>
-          <ActivityIndicator size="large" color="#0A84FF" />
+          <ActivityIndicator size="large" color="#B26A43" />
           <Text style={styles.loadingText}>Uploading raw taps to clinical gateway...</Text>
           <Text style={styles.loadingSubtext}>Extracting features and running ML ensemble models...</Text>
         </View>
@@ -238,29 +238,29 @@ export default function AlternatingFingerTappingScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
+  safeArea: { flex: 1, backgroundColor: '#F7F1E6' },
   container: { flex: 1, padding: 24, justifyContent: 'center' },
   center: { alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 28, fontWeight: '800', color: '#0F172A', marginBottom: 12, textAlign: 'center' },
-  desc: { fontSize: 16, color: '#64748B', lineHeight: 24, textAlign: 'center', marginBottom: 32 },
+  title: { fontSize: 28, fontWeight: '800', color: '#3A2E25', marginBottom: 12, textAlign: 'center' },
+  desc: { fontSize: 16, color: '#8A7765', lineHeight: 24, textAlign: 'center', marginBottom: 32 },
   section: { marginBottom: 32 },
-  label: { fontSize: 15, fontWeight: '700', color: '#334155', marginBottom: 12, textAlign: 'center' },
-  optionBtn: { backgroundColor: '#FFFFFF', borderColor: '#CBD5E1', borderWidth: 1, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 20, marginBottom: 12, alignItems: 'center' },
-  optionBtnSelected: { backgroundColor: '#0A84FF', borderColor: '#0A84FF' },
-  optionText: { fontSize: 15, color: '#475569', fontWeight: '600' },
+  label: { fontSize: 15, fontWeight: '700', color: '#5C4A3A', marginBottom: 12, textAlign: 'center' },
+  optionBtn: { backgroundColor: '#FFFFFF', borderColor: '#D9CBB8', borderWidth: 1, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 20, marginBottom: 12, alignItems: 'center' },
+  optionBtnSelected: { backgroundColor: '#B26A43', borderColor: '#B26A43' },
+  optionText: { fontSize: 15, color: '#6B5848', fontWeight: '600' },
   optionTextSelected: { color: '#FFFFFF' },
-  primaryBtn: { backgroundColor: '#0A84FF', borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
+  primaryBtn: { backgroundColor: '#B26A43', borderRadius: 12, paddingVertical: 16, alignItems: 'center' },
   primaryBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
-  loadingText: { fontSize: 18, color: '#0F172A', fontWeight: '700', marginTop: 20, textAlign: 'center' },
-  loadingSubtext: { fontSize: 14, color: '#64748B', marginTop: 8, textAlign: 'center' },
-  activeContainer: { flex: 1, padding: 24, justifyContent: 'space-between', backgroundColor: '#0F172A' },
+  loadingText: { fontSize: 18, color: '#3A2E25', fontWeight: '700', marginTop: 20, textAlign: 'center' },
+  loadingSubtext: { fontSize: 14, color: '#8A7765', marginTop: 8, textAlign: 'center' },
+  activeContainer: { flex: 1, padding: 24, justifyContent: 'space-between', backgroundColor: '#3A2E25' },
   activeHeader: { alignItems: 'center', marginTop: 20 },
-  countdownText: { fontSize: 64, fontWeight: '900', color: '#0A84FF' },
-  activeSub: { fontSize: 16, color: '#94A3B8', marginTop: 8, textAlign: 'center' },
+  countdownText: { fontSize: 64, fontWeight: '900', color: '#B26A43' },
+  activeSub: { fontSize: 16, color: '#A99A88', marginTop: 8, textAlign: 'center' },
   buttonRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center', flex: 1 },
-  tapBtn: { width: 130, height: 130, borderRadius: 65, backgroundColor: '#1E293B', borderWidth: 2, borderColor: '#334155', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 10 },
-  tapBtnPressed: { backgroundColor: '#334155', transform: [{ scale: 0.95 }] },
+  tapBtn: { width: 130, height: 130, borderRadius: 65, backgroundColor: '#4A3B2E', borderWidth: 2, borderColor: '#5C4A3A', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 10 },
+  tapBtnPressed: { backgroundColor: '#5C4A3A', transform: [{ scale: 0.95 }] },
   tapBtnText: { fontSize: 40, fontWeight: '800', color: '#FFFFFF' },
-  statsRow: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 20, borderTopWidth: 1, borderTopColor: '#1E293B' },
-  statsText: { fontSize: 16, color: '#94A3B8', fontWeight: '600' }
+  statsRow: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 20, borderTopWidth: 1, borderTopColor: '#4A3B2E' },
+  statsText: { fontSize: 16, color: '#A99A88', fontWeight: '600' }
 });

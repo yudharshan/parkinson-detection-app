@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../src/context/AuthContext';
@@ -36,7 +36,8 @@ export default function LoginScreen() {
       >
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <Text style={styles.appName}>🧠 NeuroTrack</Text>
+            <Image source={require('../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+            <Text style={styles.appName}>NeuroTrack</Text>
             <Text style={styles.tagline}>Clinical Parkinson's Monitoring</Text>
           </View>
 
@@ -53,7 +54,7 @@ export default function LoginScreen() {
             <TextInput
               style={styles.input}
               placeholder="name@clinical.org"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor="#A99A88"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -65,7 +66,7 @@ export default function LoginScreen() {
             <TextInput
               style={styles.input}
               placeholder="••••••••"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor="#A99A88"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -99,21 +100,22 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
+  safeArea: { flex: 1, backgroundColor: '#F7F1E6' },
   scrollContent: { flexGrow: 1, padding: 24, justifyContent: 'center' },
   header: { alignItems: 'center', marginBottom: 36 },
-  appName: { fontSize: 32, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
-  tagline: { fontSize: 16, color: '#64748B', marginTop: 4, fontWeight: '500' },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24, shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3, borderWidth: 1, borderColor: '#F1F5F9' },
-  title: { fontSize: 24, fontWeight: '700', color: '#0F172A', marginBottom: 20 },
-  errorContainer: { backgroundColor: '#FEF2F2', borderColor: '#FCA5A5', borderWidth: 1, borderRadius: 8, padding: 12, marginBottom: 16 },
-  errorText: { color: '#B91C1C', fontSize: 14, fontWeight: '500' },
-  label: { fontSize: 14, fontWeight: '600', color: '#334155', marginBottom: 8 },
-  input: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 10, padding: 14, fontSize: 16, color: '#0F172A', marginBottom: 20 },
-  btn: { backgroundColor: '#0A84FF', borderRadius: 10, paddingVertical: 16, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  logo: { width: 96, height: 96, marginBottom: 4 },
+  appName: { fontSize: 32, fontWeight: '800', color: '#3A2E25', letterSpacing: -0.5 },
+  tagline: { fontSize: 16, color: '#8A7765', marginTop: 4, fontWeight: '500' },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24, shadowColor: '#3A2E25', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 3, borderWidth: 1, borderColor: '#EFE7D8' },
+  title: { fontSize: 24, fontWeight: '700', color: '#3A2E25', marginBottom: 20 },
+  errorContainer: { backgroundColor: '#F6EAE2', borderColor: '#DBA08C', borderWidth: 1, borderRadius: 8, padding: 12, marginBottom: 16 },
+  errorText: { color: '#8C3322', fontSize: 14, fontWeight: '500' },
+  label: { fontSize: 14, fontWeight: '600', color: '#5C4A3A', marginBottom: 8 },
+  input: { backgroundColor: '#F7F1E6', borderWidth: 1, borderColor: '#D9CBB8', borderRadius: 10, padding: 14, fontSize: 16, color: '#3A2E25', marginBottom: 20 },
+  btn: { backgroundColor: '#B26A43', borderRadius: 10, paddingVertical: 16, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
   btnDisabled: { opacity: 0.7 },
   btnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 24 },
-  footerText: { color: '#64748B', fontSize: 15 },
-  signupLink: { color: '#0A84FF', fontSize: 15, fontWeight: '700' }
+  footerText: { color: '#8A7765', fontSize: 15 },
+  signupLink: { color: '#B26A43', fontSize: 15, fontWeight: '700' }
 });

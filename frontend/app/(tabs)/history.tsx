@@ -5,11 +5,21 @@ import { useAuth } from '../../src/context/AuthContext';
 import client from '../../src/services/api/client';
 import { Ionicons } from '@expo/vector-icons';
 
+const medLabel = (m?: string) => {
+  if (!m) return 'Not specified';
+  if (m.includes("don't take")) return 'No medications';
+  if (m.includes('Immediately before')) return 'Before meds (OFF)';
+  if (m.includes('Just after')) return 'After meds (ON)';
+  if (m.includes('Another time')) return 'Other time';
+  return m;
+};
+
 export default function HistoryMapScreen() {
   const { user, token } = useAuth();
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [sessions, setSessions] = useState<any[]>([]);
+  const [visibleCount, setVisibleCount] = useState(7);
 
   const fetchHistory = async () => {
     if (!user || !token) {
@@ -37,12 +47,12 @@ export default function HistoryMapScreen() {
     fetchHistory();
   }, [user, token]);
 
-  if (loading) return <ActivityIndicator style={{ flex: 1 }} size="large" color="#0A84FF" />;
+  if (loading) return <ActivityIndicator style={{ flex: 1 }} size="large" color="#B26A43" />;
 
   if (errorMsg) {
     return (
       <View style={styles.center}>
-        <Ionicons name="warning-outline" size={48} color="#EF4444" />
+        <Ionicons name="warning-outline" size={48} color="#B0503B" />
         <Text style={styles.errorText}>{errorMsg}</Text>
         <Pressable style={styles.retryBtn} onPress={fetchHistory}>
           <Text style={styles.retryBtnText}>Retry</Text>
@@ -51,48 +61,56 @@ export default function HistoryMapScreen() {
     );
   }
 
-  const chartLabels = sessions.slice(0, 6).reverse().map(s => {
+  // Up to the last 20 sessions, oldest -> newest. Chart is horizontally scrollable.
+  const recent = [...sessions].slice(0, 20).reverse();
+  const chartLabels = recent.map(s => {
     const d = new Date(s.timestamp || s.createdAt);
-    return `${d.getMonth() + 1}/${d.getDate()}`;
+    let h = d.getHours();
+    const ampm = h >= 12 ? 'pm' : 'am';
+    h = h % 12 || 12;
+    return `${d.getMonth() + 1}/${d.getDate()} ${h}${ampm}`;
   });
 
   const chartData = {
     labels: chartLabels.length > 0 ? chartLabels : ["No Data"],
     datasets: [
       {
-        data: sessions.slice(0, 6).reverse().map(s => s.severityScore || s.score || 0),
-        color: (opacity = 1) => `rgba(10, 132, 255, ${opacity})`,
+        data: recent.length > 0 ? recent.map(s => s.severityScore || s.score || 0) : [0],
+        color: (opacity = 1) => `rgba(178, 106, 67, ${opacity})`,
         strokeWidth: 3
       }
     ]
   };
+  const chartWidth = Math.max(Dimensions.get('window').width - 48, recent.length * 70);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
       <View style={styles.header}>
-        <Text style={styles.title}>OFF-Period Map</Text>
-        <Text style={styles.subtitle}>Longitudinal Disease Progression</Text>
+        <Text style={styles.title}>Symptom History</Text>
+        <Text style={styles.subtitle}>Your scores over time — swipe the chart to see more</Text>
       </View>
 
       {sessions.length > 0 ? (
         <View style={styles.chartCard}>
           <Text style={styles.chartTitle}>Severity Progression (Recent Runs)</Text>
-          <LineChart
-            data={chartData}
-            width={Dimensions.get('window').width - 48}
-            height={220}
-            chartConfig={{
-              backgroundColor: '#ffffff',
-              backgroundGradientFrom: '#ffffff',
-              backgroundGradientTo: '#ffffff',
-              decimalPlaces: 2,
-              color: (opacity = 1) => `rgba(10, 132, 255, ${opacity})`,
-              labelColor: (opacity = 1) => `#64748B`,
-              propsForDots: { r: "5" }
-            }}
-            bezier
-            style={styles.chart}
-          />
+          <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+            <LineChart
+              data={chartData}
+              width={chartWidth}
+              height={220}
+              chartConfig={{
+                backgroundColor: '#ffffff',
+                backgroundGradientFrom: '#ffffff',
+                backgroundGradientTo: '#ffffff',
+                decimalPlaces: 2,
+                color: (opacity = 1) => `rgba(178, 106, 67, ${opacity})`,
+                labelColor: (opacity = 1) => `#8A7765`,
+                propsForDots: { r: "5" }
+              }}
+              bezier
+              style={styles.chart}
+            />
+          </ScrollView>
         </View>
       ) : (
         <View style={styles.emptyCard}>
@@ -102,7 +120,7 @@ export default function HistoryMapScreen() {
 
       <View style={styles.historySection}>
         <Text style={styles.sectionTitle}>Completed Assessments Log</Text>
-        {sessions.map((test, index) => (
+        {sessions.slice(0, visibleCount).map((test, index) => (
           <View key={test._id || index} style={styles.historyRow}>
             <View style={styles.rowLeft}>
               <Text style={styles.rowType}>
@@ -111,7 +129,7 @@ export default function HistoryMapScreen() {
               <Text style={styles.rowDate}>
                 {new Date(test.timestamp || test.createdAt).toLocaleString()}
               </Text>
-              <Text style={styles.rowMed}>State: {test.medTimepoint}</Text>
+              <Text style={styles.rowMed} numberOfLines={1}>State: {medLabel(test.medTimepoint)}</Text>
             </View>
             <View style={styles.rowRight}>
               <Text style={styles.rowScore}>{(test.severityScore ?? test.score ?? 0).toFixed(2)}</Text>
@@ -119,33 +137,40 @@ export default function HistoryMapScreen() {
             </View>
           </View>
         ))}
+        {sessions.length > visibleCount && (
+          <Pressable style={styles.loadMoreBtn} onPress={() => setVisibleCount(c => c + 7)}>
+            <Text style={styles.loadMoreText}>Load 7 more ({sessions.length - visibleCount} older)</Text>
+          </Pressable>
+        )}
       </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: '#F7F1E6' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  errorText: { fontSize: 16, color: '#EF4444', textAlign: 'center', marginVertical: 16 },
-  retryBtn: { backgroundColor: '#0A84FF', paddingVertical: 10, paddingHorizontal: 24, borderRadius: 8 },
+  errorText: { fontSize: 16, color: '#B0503B', textAlign: 'center', marginVertical: 16 },
+  retryBtn: { backgroundColor: '#B26A43', paddingVertical: 10, paddingHorizontal: 24, borderRadius: 8 },
   retryBtnText: { color: '#FFFFFF', fontWeight: '700' },
-  header: { padding: 24, paddingTop: 60, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  title: { fontSize: 28, fontWeight: '800', color: '#1E293B' },
-  subtitle: { fontSize: 16, color: '#64748B', marginTop: 2 },
-  chartCard: { margin: 24, backgroundColor: '#fff', borderRadius: 20, padding: 15, shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 2, borderWidth: 1, borderColor: '#F1F5F9' },
-  chartTitle: { fontSize: 16, fontWeight: '700', marginBottom: 15, color: '#334155' },
+  header: { padding: 24, paddingTop: 60, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#EFE7D8' },
+  title: { fontSize: 28, fontWeight: '800', color: '#4A3B2E' },
+  subtitle: { fontSize: 16, color: '#8A7765', marginTop: 2 },
+  chartCard: { margin: 24, backgroundColor: '#fff', borderRadius: 20, padding: 15, shadowColor: '#3A2E25', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 2, borderWidth: 1, borderColor: '#EFE7D8' },
+  chartTitle: { fontSize: 16, fontWeight: '700', marginBottom: 15, color: '#5C4A3A' },
   chart: { borderRadius: 16 },
-  emptyCard: { margin: 24, backgroundColor: '#fff', borderRadius: 20, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
-  emptyText: { color: '#64748B', fontSize: 15 },
+  emptyCard: { margin: 24, backgroundColor: '#fff', borderRadius: 20, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: '#EFE7D8' },
+  emptyText: { color: '#8A7765', fontSize: 15 },
   historySection: { paddingHorizontal: 24 },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#1E293B', marginBottom: 16 },
-  historyRow: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1, borderWidth: 1, borderColor: '#F1F5F9' },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#4A3B2E', marginBottom: 16 },
+  historyRow: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', shadowColor: '#3A2E25', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1, borderWidth: 1, borderColor: '#EFE7D8' },
   rowLeft: { flex: 1 },
-  rowType: { fontSize: 15, fontWeight: '700', color: '#1E293B' },
-  rowDate: { fontSize: 12, color: '#64748B', marginTop: 4 },
-  rowMed: { fontSize: 12, color: '#475569', marginTop: 2 },
+  rowType: { fontSize: 15, fontWeight: '700', color: '#4A3B2E' },
+  rowDate: { fontSize: 12, color: '#8A7765', marginTop: 4 },
+  rowMed: { fontSize: 12, color: '#6B5848', marginTop: 2 },
   rowRight: { alignItems: 'flex-end', marginLeft: 16 },
-  rowScore: { fontSize: 22, fontWeight: '800', color: '#0F172A' },
-  rowInterpret: { fontSize: 12, fontWeight: '600', color: '#64748B', marginTop: 2 }
+  rowScore: { fontSize: 22, fontWeight: '800', color: '#3A2E25' },
+  rowInterpret: { fontSize: 12, fontWeight: '600', color: '#8A7765', marginTop: 2 },
+  loadMoreBtn: { backgroundColor: '#EFE7D8', borderRadius: 10, paddingVertical: 12, alignItems: 'center', marginTop: 4 },
+  loadMoreText: { color: '#6B5848', fontWeight: '700', fontSize: 14 },
 });

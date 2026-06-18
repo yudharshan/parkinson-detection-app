@@ -22,8 +22,8 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F7FA' }}>
-        <ActivityIndicator size="large" color="#0A84FF" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F7F1E6' }}>
+        <ActivityIndicator size="large" color="#B26A43" />
       </View>
     );
   }

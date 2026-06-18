@@ -8,6 +8,7 @@ import swaggerUi from 'swagger-ui-express';
 import authRoutes from './routes/authRoutes.js';
 import sessionRoutes from './routes/sessionRoutes.js';
 import clinicalRoutes from './routes/clinicalRoutes.js';
+import { setMemoryMode, isMemoryMode } from './store.js';
 
 dotenv.config();
 const app = express();
@@ -89,20 +90,20 @@ app.use(express.json({ limit: '10mb' }));
 app.use(cors());
 
 const MONGO_URI = process.env.MONGO_URI || "";
-mongoose.connect(MONGO_URI)
-    .then(() => console.log("🍃 MongoDB Connected to Atlas"))
-    .catch(err => {
-        console.warn("⚠️ MongoDB Atlas connection failed. Attempting local MongoDB fallback...", err.message);
-        mongoose.connect("mongodb://127.0.0.1:27017/NeuroTrack")
-            .then(() => console.log("🍃 MongoDB Connected to Local Fallback"))
-            .catch(localErr => console.error("❌ DB Error (Atlas & Local):", localErr.message));
-    });
+if (MONGO_URI) {
+    mongoose.connect(MONGO_URI)
+        .then(() => { setMemoryMode(false); console.log("🍃 MongoDB Connected (persistent store)"); })
+        .catch(err => console.warn("⚠️ MongoDB connection failed; using in-memory store.", err.message));
+} else {
+    console.log("🗃️  No MONGO_URI set — using in-memory store (zero-setup demo mode).");
+}
 
 // Swagger Route
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // API Routes
-app.use('/api/auth', authRoutes);      
+app.get('/api/health', (_req, res) => res.json({ ok: true, store: isMemoryMode() ? 'in-memory' : 'mongodb' }));
+app.use('/api/auth', authRoutes);
 app.use('/api/sessions', sessionRoutes); 
 app.use('/api', clinicalRoutes); 
 

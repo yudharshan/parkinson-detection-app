@@ -12,8 +12,10 @@ import { generateId } from '../../src/utils';
 import type { AccelerometerSample, AccelerometerSessionPayload, Session } from '../../src/models';
 import { useAuth } from '../../src/context/AuthContext';
 
-const RECORD_DURATION_MS = 20_000; // Updated to 20s
-const SAMPLE_INTERVAL_MS = 100;    // Updated to ~10Hz (100ms)
+const RECORD_DURATION_MS = 20_000; // 20s
+// ~100 Hz to match the training data. At the old 10 Hz the Nyquist limit (5 Hz)
+// could not even capture the 4-6 Hz Parkinsonian tremor band -> a train/serve mismatch.
+const SAMPLE_INTERVAL_MS = 10;
 
 export default function TremorTestScreen() {
   const router = useRouter();
@@ -95,9 +97,8 @@ export default function TremorTestScreen() {
           params: {
             testType: 'tremor',
             severityScore: response.data.data.severityScore,
-            baseConfidence: response.data.data.baseConfidence,
-            appliedOffset: response.data.data.appliedOffset,
-            interpretation: response.data.data.interpretation
+            interpretation: response.data.data.interpretation,
+            features: JSON.stringify(response.data.data.rawFeatures || {}),
           }
         });
       } else {
@@ -190,7 +191,7 @@ export default function TremorTestScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={[styles.container, styles.center]}>
-          <ActivityIndicator size="large" color="#0A84FF" />
+          <ActivityIndicator size="large" color="#B26A43" />
           <Text style={styles.loadingText}>Uploading raw sensor data to gateway...</Text>
           <Text style={styles.loadingSubtext}>Extracting features and running ML ensemble models...</Text>
         </View>
@@ -221,26 +222,26 @@ export default function TremorTestScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
+  safeArea: { flex: 1, backgroundColor: '#F7F1E6' },
   container: { flex: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 32, justifyContent: 'center' },
   center: { alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 28, fontWeight: '800', color: '#0F172A', marginBottom: 12, textAlign: 'center' },
-  desc: { fontSize: 16, color: '#64748B', lineHeight: 24, textAlign: 'center', marginBottom: 32 },
+  title: { fontSize: 28, fontWeight: '800', color: '#3A2E25', marginBottom: 12, textAlign: 'center' },
+  desc: { fontSize: 16, color: '#8A7765', lineHeight: 24, textAlign: 'center', marginBottom: 32 },
   section: { marginBottom: 32 },
-  label: { fontSize: 15, fontWeight: '700', color: '#334155', marginBottom: 12, textAlign: 'center' },
-  optionBtn: { backgroundColor: '#FFFFFF', borderColor: '#CBD5E1', borderWidth: 1, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 20, marginBottom: 12, alignItems: 'center' },
-  optionBtnSelected: { backgroundColor: '#0A84FF', borderColor: '#0A84FF' },
-  optionText: { fontSize: 15, color: '#475569', fontWeight: '600' },
+  label: { fontSize: 15, fontWeight: '700', color: '#5C4A3A', marginBottom: 12, textAlign: 'center' },
+  optionBtn: { backgroundColor: '#FFFFFF', borderColor: '#D9CBB8', borderWidth: 1, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 20, marginBottom: 12, alignItems: 'center' },
+  optionBtnSelected: { backgroundColor: '#B26A43', borderColor: '#B26A43' },
+  optionText: { fontSize: 15, color: '#6B5848', fontWeight: '600' },
   optionTextSelected: { color: '#FFFFFF' },
-  subtitle: { fontSize: 16, color: '#64748B', textAlign: 'center', marginBottom: 24 },
-  magnitudeCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24, marginBottom: 24, alignItems: 'center', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 2, borderWidth: 1, borderColor: '#F1F5F9' },
-  magnitudeLabel: { fontSize: 16, color: '#64748B', marginBottom: 8 },
-  magnitudeValue: { fontSize: 48, fontWeight: '700', color: '#0F172A' },
-  magnitudeUnit: { fontSize: 20, color: '#64748B' },
+  subtitle: { fontSize: 16, color: '#8A7765', textAlign: 'center', marginBottom: 24 },
+  magnitudeCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 24, marginBottom: 24, alignItems: 'center', shadowColor: '#3A2E25', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 2, borderWidth: 1, borderColor: '#EFE7D8' },
+  magnitudeLabel: { fontSize: 16, color: '#8A7765', marginBottom: 8 },
+  magnitudeValue: { fontSize: 48, fontWeight: '700', color: '#3A2E25' },
+  magnitudeUnit: { fontSize: 20, color: '#8A7765' },
   countdownWrap: { alignItems: 'center', marginBottom: 24 },
-  countdownValue: { fontSize: 56, fontWeight: '900', color: '#0A84FF' },
-  primaryButton: { backgroundColor: '#0A84FF', paddingVertical: 18, borderRadius: 12, alignItems: 'center' },
+  countdownValue: { fontSize: 56, fontWeight: '900', color: '#B26A43' },
+  primaryButton: { backgroundColor: '#B26A43', paddingVertical: 18, borderRadius: 12, alignItems: 'center' },
   primaryButtonText: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
-  loadingText: { fontSize: 18, color: '#0F172A', fontWeight: '700', marginTop: 20, textAlign: 'center' },
-  loadingSubtext: { fontSize: 14, color: '#64748B', marginTop: 8, textAlign: 'center' }
+  loadingText: { fontSize: 18, color: '#3A2E25', fontWeight: '700', marginTop: 20, textAlign: 'center' },
+  loadingSubtext: { fontSize: 14, color: '#8A7765', marginTop: 8, textAlign: 'center' }
 });

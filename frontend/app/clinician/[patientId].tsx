@@ -10,6 +10,15 @@ import * as Linking from 'expo-linking';
 
 const screenWidth = Dimensions.get('window').width;
 
+const medLabel = (m?: string) => {
+  if (!m) return 'Not specified';
+  if (m.includes("don't take")) return 'No medications';
+  if (m.includes('Immediately before')) return 'Before meds (OFF)';
+  if (m.includes('Just after')) return 'After meds (ON)';
+  if (m.includes('Another time')) return 'Other time';
+  return m;
+};
+
 export default function PatientDetailScreen() {
   const router = useRouter();
   const { patientId } = useLocalSearchParams();
@@ -94,7 +103,7 @@ export default function PatientDetailScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#0A84FF" />
+          <ActivityIndicator size="large" color="#B26A43" />
           <Text style={styles.loadingText}>Decrypting clinical files...</Text>
         </View>
       </SafeAreaView>
@@ -105,7 +114,7 @@ export default function PatientDetailScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.center}>
-          <Ionicons name="warning-outline" size={48} color="#EF4444" />
+          <Ionicons name="warning-outline" size={48} color="#B0503B" />
           <Text style={styles.errorText}>{errorMsg}</Text>
           <Pressable style={styles.backBtn} onPress={() => router.back()}>
             <Text style={styles.backBtnText}>Return to Roster</Text>
@@ -127,12 +136,12 @@ export default function PatientDetailScreen() {
     datasets: [
       {
         data: tappingTests.slice(0, 7).reverse().map(s => s.severityScore || s.score || 0),
-        color: (opacity = 1) => `rgba(10, 132, 255, ${opacity})`,
+        color: (opacity = 1) => `rgba(178, 106, 67, ${opacity})`,
         strokeWidth: 2
       },
       {
         data: tremorTests.slice(0, 7).reverse().map(s => s.severityScore || s.score || 0),
-        color: (opacity = 1) => `rgba(235, 87, 87, ${opacity})`,
+        color: (opacity = 1) => `rgba(193, 107, 78, ${opacity})`,
         strokeWidth: 2
       }
     ],
@@ -143,7 +152,7 @@ export default function PatientDetailScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
         <Pressable style={styles.backLink} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#0A84FF" />
+          <Ionicons name="arrow-back" size={24} color="#B26A43" />
           <Text style={styles.backLinkText}>Roster</Text>
         </Pressable>
         <Text style={styles.headerTitle}>Patient Detail</Text>
@@ -159,17 +168,17 @@ export default function PatientDetailScreen() {
               <Text style={styles.trendLabel}>Growth Status Indicator</Text>
               <View style={[
                 styles.badge,
-                trend.status === 'Worsening' && { backgroundColor: '#FFCDD2' },
-                trend.status === 'Needs Monitoring' && { backgroundColor: '#FFE0B2' },
-                trend.status === 'Stable' && { backgroundColor: '#DCEDC8' },
-                trend.status === 'Insufficient Data' && { backgroundColor: '#F1F5F9' },
+                trend.status === 'Worsening' && { backgroundColor: '#ECCCC0' },
+                trend.status === 'Needs Monitoring' && { backgroundColor: '#EBD9B4' },
+                trend.status === 'Stable' && { backgroundColor: '#E3E8CD' },
+                trend.status === 'Insufficient Data' && { backgroundColor: '#EFE7D8' },
               ]}>
                 <Text style={[
                   styles.badgeText,
-                  trend.status === 'Worsening' && { color: '#C62828' },
-                  trend.status === 'Needs Monitoring' && { color: '#E65100' },
-                  trend.status === 'Stable' && { color: '#2E7D32' },
-                  trend.status === 'Insufficient Data' && { color: '#64748B' },
+                  trend.status === 'Worsening' && { color: '#9C3E2C' },
+                  trend.status === 'Needs Monitoring' && { color: '#A86A1E' },
+                  trend.status === 'Stable' && { color: '#5B7044' },
+                  trend.status === 'Insufficient Data' && { color: '#8A7765' },
                 ]}>
                   {trend.status}
                 </Text>
@@ -194,9 +203,9 @@ export default function PatientDetailScreen() {
                 backgroundGradientFrom: '#FFFFFF',
                 backgroundGradientTo: '#FFFFFF',
                 decimalPlaces: 2,
-                color: (opacity = 1) => `rgba(15, 23, 42, ${opacity})`,
-                labelColor: (opacity = 1) => `rgba(100, 116, 139, ${opacity})`,
-                propsForBackgroundLines: { strokeWidth: 1, stroke: '#F1F5F9' },
+                color: (opacity = 1) => `rgba(58, 46, 37, ${opacity})`,
+                labelColor: (opacity = 1) => `rgba(138, 119, 101, ${opacity})`,
+                propsForBackgroundLines: { strokeWidth: 1, stroke: '#EFE7D8' },
                 propsForDots: { r: '4' }
               }}
               bezier
@@ -212,7 +221,7 @@ export default function PatientDetailScreen() {
         {/* Export CSV Button */}
         <Pressable style={styles.exportBtn} onPress={handleExportCSV}>
           <Ionicons name="download-outline" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-          <Text style={styles.exportBtnText}>Export CSV Dataset</Text>
+          <Text style={styles.exportBtnText}>Download Patient CSV</Text>
         </Pressable>
 
         {/* Collapsible raw numbers breakdown */}
@@ -225,7 +234,7 @@ export default function PatientDetailScreen() {
             <Ionicons 
               name={detailsExpanded ? "chevron-up" : "chevron-down"} 
               size={22} 
-              color="#0A84FF" 
+              color="#B26A43" 
             />
           </Pressable>
 
@@ -246,32 +255,34 @@ export default function PatientDetailScreen() {
                     </View>
 
                     <View style={styles.metricItem}>
-                      <Text style={styles.metricLabel}>Medication Timepoint:</Text>
-                      <Text style={styles.metricValue}>{test.medTimepoint || 'Not Specified'}</Text>
+                      <Text style={styles.metricLabel}>Medication:</Text>
+                      <Text style={styles.metricValue}>{medLabel(test.medTimepoint)}</Text>
                     </View>
 
                     <View style={styles.metricGrid}>
                       <View style={styles.gridCell}>
-                        <Text style={styles.gridLabel}>Base Confidence</Text>
+                        <Text style={styles.gridLabel}>Model Conf.</Text>
                         <Text style={styles.gridValue}>{test.baseConfidence?.toFixed(2) ?? '0.00'}</Text>
                       </View>
                       <View style={styles.gridCell}>
-                        <Text style={styles.gridLabel}>Applied Offset</Text>
-                        <Text style={styles.gridValue}>+{test.appliedOffset?.toFixed(2) ?? '0.00'}</Text>
-                      </View>
-                      <View style={styles.gridCell}>
-                        <Text style={styles.gridLabel}>Final Score</Text>
+                        <Text style={styles.gridLabel}>Symptom Score</Text>
                         <Text style={[styles.gridValue, { fontWeight: '800' }]}>
                           {test.severityScore?.toFixed(2) ?? '0.00'}
                         </Text>
                       </View>
+                      <View style={styles.gridCell}>
+                        <Text style={styles.gridLabel}>Result</Text>
+                        <Text style={styles.gridValue}>{test.prediction === 'unhealthy' ? 'Symptoms' : 'Clear'}</Text>
+                      </View>
                     </View>
 
-                    {test.rawFeatures && test.rawFeatures.length > 0 && (
+                    {test.rawFeatures && Object.keys(test.rawFeatures).length > 0 && (
                       <View style={styles.featuresBox}>
-                        <Text style={styles.featuresTitle}>Extracted Features Array:</Text>
+                        <Text style={styles.featuresTitle}>Extracted features:</Text>
                         <Text style={styles.featuresText}>
-                          [{test.rawFeatures.map((f: number) => f.toFixed(3)).join(', ')}]
+                          {Object.entries(test.rawFeatures)
+                            .map(([k, v]) => `${k}=${typeof v === 'number' ? (v as number).toFixed(3) : v}`)
+                            .join(',  ')}
                         </Text>
                       </View>
                     )}
@@ -288,46 +299,46 @@ export default function PatientDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F8FAFC' },
+  safeArea: { flex: 1, backgroundColor: '#F7F1E6' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  loadingText: { fontSize: 16, color: '#64748B', marginTop: 12, fontWeight: '600' },
-  errorText: { fontSize: 16, color: '#EF4444', textAlign: 'center', marginBottom: 20 },
-  backBtn: { backgroundColor: '#0A84FF', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 10 },
+  loadingText: { fontSize: 16, color: '#8A7765', marginTop: 12, fontWeight: '600' },
+  errorText: { fontSize: 16, color: '#B0503B', textAlign: 'center', marginBottom: 20 },
+  backBtn: { backgroundColor: '#B26A43', paddingVertical: 12, paddingHorizontal: 24, borderRadius: 10 },
   backBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#E2E8F0', backgroundColor: '#FFFFFF' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#E7DBC9', backgroundColor: '#FFFFFF' },
   backLink: { flexDirection: 'row', alignItems: 'center' },
-  backLinkText: { fontSize: 16, color: '#0A84FF', marginLeft: 4, fontWeight: '600' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
+  backLinkText: { fontSize: 16, color: '#B26A43', marginLeft: 4, fontWeight: '600' },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: '#3A2E25' },
   scrollContainer: { padding: 24, paddingBottom: 48 },
-  trendCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 18, marginBottom: 20, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1 },
+  trendCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 18, marginBottom: 20, borderWidth: 1, borderColor: '#EFE7D8', shadowColor: '#3A2E25', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1 },
   trendHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  trendLabel: { fontSize: 14, color: '#64748B', fontWeight: '600' },
+  trendLabel: { fontSize: 14, color: '#8A7765', fontWeight: '600' },
   badge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
   badgeText: { fontSize: 12, fontWeight: '700' },
-  trendReason: { fontSize: 16, fontWeight: '700', color: '#0F172A', lineHeight: 22 },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, marginBottom: 20, shadowColor: '#0F172A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1, borderWidth: 1, borderColor: '#F1F5F9' },
-  cardTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
-  cardSub: { fontSize: 13, color: '#64748B', marginTop: 2, marginBottom: 12 },
+  trendReason: { fontSize: 16, fontWeight: '700', color: '#3A2E25', lineHeight: 22 },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, marginBottom: 20, shadowColor: '#3A2E25', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1, borderWidth: 1, borderColor: '#EFE7D8' },
+  cardTitle: { fontSize: 18, fontWeight: '700', color: '#3A2E25' },
+  cardSub: { fontSize: 13, color: '#8A7765', marginTop: 2, marginBottom: 12 },
   chart: { marginVertical: 8, borderRadius: 16 },
   emptyChart: { height: 180, alignItems: 'center', justifyContent: 'center' },
-  emptyText: { color: '#64748B', fontSize: 15 },
-  exportBtn: { backgroundColor: '#0A84FF', borderRadius: 12, paddingVertical: 16, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', marginBottom: 20 },
+  emptyText: { color: '#8A7765', fontSize: 15 },
+  exportBtn: { backgroundColor: '#B26A43', borderRadius: 12, paddingVertical: 16, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', marginBottom: 20 },
   exportBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
   collapseHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  collapseTitle: { fontSize: 17, fontWeight: '700', color: '#0F172A' },
+  collapseTitle: { fontSize: 17, fontWeight: '700', color: '#3A2E25' },
   collapseContent: { marginTop: 16 },
-  testRecordRow: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  testRecordRow: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#EFE7D8' },
   recordHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  recordType: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
-  recordDate: { fontSize: 13, color: '#64748B' },
-  metricItem: { flexDirection: 'row', marginVertical: 4 },
-  metricLabel: { fontSize: 14, color: '#475569', fontWeight: '500', marginRight: 6 },
-  metricValue: { fontSize: 14, color: '#0F172A', fontWeight: '600' },
-  metricGrid: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: '#F8FAFC', borderRadius: 10, padding: 12, marginTop: 8 },
+  recordType: { fontSize: 15, fontWeight: '700', color: '#3A2E25' },
+  recordDate: { fontSize: 13, color: '#8A7765' },
+  metricItem: { flexDirection: 'row', marginVertical: 4, alignItems: 'flex-start' },
+  metricLabel: { fontSize: 14, color: '#6B5848', fontWeight: '500', marginRight: 6 },
+  metricValue: { fontSize: 14, color: '#3A2E25', fontWeight: '600', flex: 1, flexShrink: 1 },
+  metricGrid: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: '#F7F1E6', borderRadius: 10, padding: 12, marginTop: 8 },
   gridCell: { alignItems: 'center', flex: 1 },
-  gridLabel: { fontSize: 11, color: '#64748B', marginBottom: 4 },
-  gridValue: { fontSize: 14, color: '#0F172A', fontWeight: '700' },
-  featuresBox: { backgroundColor: '#F1F5F9', borderRadius: 8, padding: 10, marginTop: 12 },
-  featuresTitle: { fontSize: 12, color: '#475569', fontWeight: '600', marginBottom: 4 },
-  featuresText: { fontSize: 11, color: '#0F172A', fontFamily: 'monospace' }
+  gridLabel: { fontSize: 11, color: '#8A7765', marginBottom: 4 },
+  gridValue: { fontSize: 14, color: '#3A2E25', fontWeight: '700' },
+  featuresBox: { backgroundColor: '#EFE7D8', borderRadius: 8, padding: 10, marginTop: 12 },
+  featuresTitle: { fontSize: 12, color: '#6B5848', fontWeight: '600', marginBottom: 4 },
+  featuresText: { fontSize: 11, color: '#3A2E25', fontFamily: 'monospace' }
 });

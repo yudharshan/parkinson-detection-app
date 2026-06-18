@@ -11,7 +11,7 @@ export default function ResultsScreen() {
   
   // Binary Logic: If score >= 0.6, we classify as "Detected" (Red)
   const isDetected = aiConfidence >= 0.6;
-  const statusColor = isDetected ? '#EF4444' : '#10B981';
+  const statusColor = isDetected ? '#B0503B' : '#6E8B5A';
   const statusLabel = isDetected ? 'TREMOR DETECTED' : 'NORMAL RANGE';
 
   // Mock data for the trend (You can later pass actual historical points here)
@@ -64,7 +64,7 @@ export default function ResultsScreen() {
               backgroundGradientTo: '#ffffff',
               decimalPlaces: 2,
               color: (opacity = 1) => statusColor,
-              labelColor: (opacity = 1) => `#64748B`,
+              labelColor: (opacity = 1) => `#8A7765`,
               style: { borderRadius: 16 },
               propsForDots: { r: "5", strokeWidth: "2", stroke: statusColor }
             }}
@@ -93,7 +93,7 @@ export default function ResultsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: '#F7F1E6' },
   statusBanner: { 
     paddingTop: 60, 
     paddingBottom: 30, 
@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
   label: { 
     fontSize: 12, 
     fontWeight: '700', 
-    color: '#94A3B8', 
+    color: '#A99A88', 
     letterSpacing: 1.5 
   },
   confidenceValue: { 
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   },
   subtext: { 
     fontSize: 14, 
-    color: '#64748B', 
+    color: '#8A7765', 
     textAlign: 'center' 
   },
   chartCard: { 
@@ -145,13 +145,13 @@ const styles = StyleSheet.create({
   chartTitle: { 
     fontSize: 14, 
     fontWeight: '600', 
-    color: '#475569', 
+    color: '#6B5848', 
     marginBottom: 10, 
     marginLeft: 10 
   },
   chart: { borderRadius: 16 },
   historyBtn: { 
-    backgroundColor: '#1E293B', 
+    backgroundColor: '#4A3B2E', 
     paddingVertical: 18, 
     borderRadius: 15, 
     alignItems: 'center' 
@@ -167,7 +167,7 @@ const styles = StyleSheet.create({
     alignItems: 'center' 
   },
   doneBtnText: { 
-    color: '#64748B', 
+    color: '#8A7765', 
     fontWeight: '600' 
   }
 });

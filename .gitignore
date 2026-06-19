@@ -23,8 +23,12 @@ logs/
 .DS_Store
 .vscode/
 .idea/
-node_modules/
 
+# 6. Python
 venv/
 __pycache__/
 *.pyc
+
+# 7. Kept local only — not pushed to GitHub
+CLAUDE.md
+datasets/
